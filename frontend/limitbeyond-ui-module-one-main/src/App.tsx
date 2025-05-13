@@ -11,6 +11,7 @@ import SignUp from "./pages/auth/SignUp";
 import Dashboard from "./pages/dashboard/Dashboard";
 import MouseFollower from "./components/ui/MouseFollower";
 import authService from './services/api/authService';
+import ExerciseList from "./pages/exercise/ExerciseList";
 
 const queryClient = new QueryClient({
   defaultOptions: {

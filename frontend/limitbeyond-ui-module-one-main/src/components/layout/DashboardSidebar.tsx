@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
-import { Activity, Users, User, MessageSquare, Calendar, Settings, Home, LogOut, HelpCircle, Bell, Shield, UserCog, ClipboardList } from 'lucide-react';
+import { Activity, Users, User, MessageSquare, Calendar, Settings, Home, LogOut, HelpCircle, Bell, Shield, UserCog, ClipboardList, Dumbbell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { UserProfile } from '@/services/api/userService';
@@ -16,7 +16,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ userProfile }) => {
   const location = useLocation();
   const { toast } = useToast();
   const [userRole, setUserRole] = useState<string | null>(null);
-  
+
   useEffect(() => {
     if (userProfile && userProfile.roles && userProfile.roles.length > 0) {
       setUserRole(userProfile.roles[0]);
@@ -43,6 +43,12 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ userProfile }) => {
       icon: Home,
       path: '/dashboard',
       isActive: isActive('/dashboard'),
+    },
+    {
+      title: 'Exercises',
+      icon: Dumbbell,
+      path: '/dashboard/exercises',
+      isActive: isActive('/dashboard/exercises'),
     },
     {
       title: 'Account',
@@ -91,10 +97,10 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ userProfile }) => {
   ];
 
   // Menu items for diet chat & feedback based on role
-  const dietChatPath = userRole === 'MEMBER' 
-    ? '/dashboard/diet-chat' 
+  const dietChatPath = userRole === 'MEMBER'
+    ? '/dashboard/diet-chat'
     : '/dashboard/diet-chats';
-  
+
   const feedbackPath = userRole === 'MEMBER'
     ? '/dashboard/feedback'
     : '/dashboard/feedbacks';
@@ -121,14 +127,14 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ userProfile }) => {
           <Activity className="h-8 w-8 text-lb-accent" />
           <span className="text-xl font-bold gradient-text">LimitBeyond</span>
         </div>
-        
+
         <SidebarGroup>
           <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {commonItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton 
+                  <SidebarMenuButton
                     variant={item.isActive ? "default" : "outline"}
                     onClick={() => navigate(item.path)}
                   >
@@ -140,7 +146,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ userProfile }) => {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-        
+
         {userRole === 'ADMIN' && (
           <SidebarGroup>
             <SidebarGroupLabel>Administration</SidebarGroupLabel>
@@ -148,7 +154,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ userProfile }) => {
               <SidebarMenu>
                 {adminItems.map((item) => (
                   <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton 
+                    <SidebarMenuButton
                       variant={item.isActive ? "default" : "outline"}
                       onClick={() => navigate(item.path)}
                     >
@@ -161,7 +167,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ userProfile }) => {
             </SidebarGroupContent>
           </SidebarGroup>
         )}
-        
+
         {userRole === 'TRAINER' && (
           <SidebarGroup>
             <SidebarGroupLabel>Trainer</SidebarGroupLabel>
@@ -169,7 +175,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ userProfile }) => {
               <SidebarMenu>
                 {trainerItems.map((item) => (
                   <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton 
+                    <SidebarMenuButton
                       variant={item.isActive ? "default" : "outline"}
                       onClick={() => navigate(item.path)}
                     >
@@ -182,14 +188,14 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ userProfile }) => {
             </SidebarGroupContent>
           </SidebarGroup>
         )}
-        
+
         <SidebarGroup>
           <SidebarGroupLabel>Communication</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {communicationItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton 
+                  <SidebarMenuButton
                     variant={item.isActive ? "default" : "outline"}
                     onClick={() => navigate(item.path)}
                   >
@@ -201,14 +207,14 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ userProfile }) => {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-        
+
         <SidebarGroup className="mt-auto">
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <Button 
-                  variant="ghost" 
-                  className="w-full justify-start" 
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start"
                   onClick={handleLogout}
                 >
                   <LogOut className="h-5 w-5 mr-3" />

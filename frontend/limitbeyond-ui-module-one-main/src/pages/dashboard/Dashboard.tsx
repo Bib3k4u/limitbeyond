@@ -11,6 +11,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, RefreshCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import Exercises from '@/pages/dashboard/Exercises';
+import WorkoutDetail from '@/pages/dashboard/workouts/WorkoutDetail';
 
 // Import all dashboard pages
 import UserManagement from '@/pages/dashboard/admin/UserManagement';
@@ -92,7 +94,7 @@ const Dashboard = () => {
   }
   
   return (
-    <SidebarProvider>
+    <SidebarProvider defaultOpen={true}>
       <div className="flex min-h-screen w-full bg-lb-dark">
         <DashboardSidebar userProfile={userProfile} />
         <div className="flex-1 flex flex-col">
@@ -120,7 +122,10 @@ const Dashboard = () => {
                 <Route index element={<DashboardHome userProfile={userProfile} />} />
                 <Route path="account" element={<AccountSettings userProfile={userProfile} />} />
                 <Route path="help" element={<HelpCenter />} />
-                
+                {/* Exercise routes */}
+                <Route path="exercises/*" element={<Exercises />} />
+                <Route path="workouts/:id" element={<WorkoutDetail />} />
+
                 {/* Role-specific routes */}
                 {userProfile?.roles.includes('ADMIN') && (
                   <>

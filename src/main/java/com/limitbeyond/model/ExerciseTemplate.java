@@ -11,11 +11,12 @@ public class ExerciseTemplate {
 
     private String name;
 
-    @DBRef
+    @DBRef(lazy = false)
     private MuscleGroup primaryMuscleGroup;
 
-    @DBRef
+    @DBRef(lazy = false)
     private MuscleGroup secondaryMuscleGroup;
+
 
     private String description;
 
