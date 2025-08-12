@@ -13,6 +13,7 @@ import { Loader2, RefreshCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Exercises from '@/pages/dashboard/Exercises';
 import WorkoutDetail from '@/pages/dashboard/workouts/WorkoutDetail';
+import Workouts from '@/pages/dashboard/workouts';
 
 // Import all dashboard pages
 import UserManagement from '@/pages/dashboard/admin/UserManagement';
@@ -124,8 +125,8 @@ const Dashboard = () => {
                 <Route path="help" element={<HelpCenter />} />
                 {/* Exercise routes */}
                 <Route path="exercises/*" element={<Exercises />} />
-                <Route path="workouts/:id" element={<WorkoutDetail />} />
-
+                {/* Workout routes */}
+                <Route path="workouts/*" element={<Workouts />} />
                 {/* Role-specific routes */}
                 {userProfile?.roles.includes('ADMIN') && (
                   <>

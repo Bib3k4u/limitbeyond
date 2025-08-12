@@ -72,7 +72,7 @@ export interface UpdateProfileRequest {
   phoneNumber?: string;
 }
 
-const userService = {
+export const userService = {
   // Get current user's profile
   getCurrentUserProfile: async (): Promise<UserProfile> => {
     try {

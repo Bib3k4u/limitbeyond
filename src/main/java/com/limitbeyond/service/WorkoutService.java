@@ -32,4 +32,7 @@ public interface WorkoutService {
     Workout copyWorkout(String id, LocalDateTime newScheduledDate);
 
     void delete(String id);
+
+    // New: mark a set as not completed
+    Workout uncompleteSet(String workoutId, String setId);
 }

@@ -24,6 +24,10 @@ public class Workout {
     @DBRef
     private List<WorkoutSet> sets = new ArrayList<>();
 
+    // New: explicitly store target muscle groups selected for this workout
+    @DBRef
+    private List<MuscleGroup> targetMuscleGroups = new ArrayList<>();
+
     private LocalDateTime scheduledDate; // When the workout is scheduled for
     private LocalDateTime completedDate; // When the workout was completed
     private boolean completed;
@@ -94,6 +98,21 @@ public class Workout {
             this.sets = new ArrayList<>();
         }
         this.sets.add(set);
+    }
+
+    public List<MuscleGroup> getTargetMuscleGroups() {
+        return targetMuscleGroups;
+    }
+
+    public void setTargetMuscleGroups(List<MuscleGroup> targetMuscleGroups) {
+        this.targetMuscleGroups = targetMuscleGroups;
+    }
+
+    public void addTargetMuscleGroup(MuscleGroup muscleGroup) {
+        if (this.targetMuscleGroups == null) {
+            this.targetMuscleGroups = new ArrayList<>();
+        }
+        this.targetMuscleGroups.add(muscleGroup);
     }
 
     public LocalDateTime getScheduledDate() {

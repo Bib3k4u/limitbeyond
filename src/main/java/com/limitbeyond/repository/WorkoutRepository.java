@@ -1,5 +1,6 @@
 package com.limitbeyond.repository;
 
+import com.limitbeyond.model.MuscleGroup;
 import com.limitbeyond.model.User;
 import com.limitbeyond.model.Workout;
 import org.springframework.data.mongodb.repository.MongoRepository;
@@ -24,4 +25,7 @@ public interface WorkoutRepository extends MongoRepository<Workout, String> {
 
     // Find incomplete workouts for a member
     List<Workout> findByMemberAndCompletedFalse(User member);
+
+    // New: find by member and containing target muscle group
+    List<Workout> findByMemberAndTargetMuscleGroupsContaining(User member, MuscleGroup muscleGroup);
 }

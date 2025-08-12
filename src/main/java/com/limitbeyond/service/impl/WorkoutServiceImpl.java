@@ -2,6 +2,7 @@ package com.limitbeyond.service.impl;
 
 import com.limitbeyond.dto.workout.WorkoutRequest;
 import com.limitbeyond.model.ExerciseTemplate;
+import com.limitbeyond.model.MuscleGroup;
 import com.limitbeyond.model.User;
 import com.limitbeyond.model.Workout;
 import com.limitbeyond.model.WorkoutSet;
@@ -10,10 +11,13 @@ import com.limitbeyond.repository.WorkoutSetRepository;
 import com.limitbeyond.repository.UserRepository;
 import com.limitbeyond.repository.ExerciseTemplateRepository;
 import com.limitbeyond.service.WorkoutService;
+import com.limitbeyond.service.MuscleGroupService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -32,11 +36,17 @@ public class WorkoutServiceImpl implements WorkoutService {
     @Autowired
     private ExerciseTemplateRepository exerciseTemplateRepository;
 
+    @Autowired
+    private MuscleGroupService muscleGroupService;
+
     @Override
     public Workout createWorkout(WorkoutRequest request) {
         // Get member
-        User member = userRepository.findById(request.getMemberId())
-                .orElseThrow(() -> new UsernameNotFoundException("Member not found"));
+        User member = null;
+        if (request.getMemberId() != null) {
+            member = userRepository.findById(request.getMemberId())
+                    .orElseThrow(() -> new UsernameNotFoundException("Member not found"));
+        }
 
         // Get trainer if provided
         User trainer = null;
@@ -49,8 +59,25 @@ public class WorkoutServiceImpl implements WorkoutService {
         Workout workout = new Workout(request.getName(), member);
         workout.setDescription(request.getDescription());
         workout.setTrainer(trainer);
-        workout.setScheduledDate(request.getScheduledDate());
+
+        // Map date fields: scheduledDate takes precedence, else from LocalDate at midnight
+        if (request.getScheduledDate() != null) {
+            workout.setScheduledDate(request.getScheduledDate());
+        } else if (request.getScheduledLocalDate() != null) {
+            LocalDate d = request.getScheduledLocalDate();
+            workout.setScheduledDate(LocalDateTime.of(d, LocalTime.MIDNIGHT));
+        }
+
         workout.setNotes(request.getNotes());
+
+        // Map target muscle groups
+        if (request.getTargetMuscleGroupIds() != null && !request.getTargetMuscleGroupIds().isEmpty()) {
+            List<MuscleGroup> groups = new ArrayList<>();
+            for (String mgId : request.getTargetMuscleGroupIds()) {
+                groups.add(muscleGroupService.findById(mgId));
+            }
+            workout.setTargetMuscleGroups(groups);
+        }
 
         // Create and add sets
         if (request.getSets() != null) {
@@ -61,6 +88,8 @@ public class WorkoutServiceImpl implements WorkoutService {
                 WorkoutSet set = new WorkoutSet(exercise, setRequest.getReps());
                 set.setWeight(setRequest.getWeight());
                 set.setNotes(setRequest.getNotes());
+                Double w = setRequest.getWeight() != null ? setRequest.getWeight() : 0.0;
+                set.setVolume(w * setRequest.getReps());
                 set = workoutSetRepository.save(set);
                 workout.addSet(set);
             }
@@ -112,7 +141,14 @@ public class WorkoutServiceImpl implements WorkoutService {
         // Update basic info
         workout.setName(request.getName());
         workout.setDescription(request.getDescription());
-        workout.setScheduledDate(request.getScheduledDate());
+
+        if (request.getScheduledDate() != null) {
+            workout.setScheduledDate(request.getScheduledDate());
+        } else if (request.getScheduledLocalDate() != null) {
+            LocalDate d = request.getScheduledLocalDate();
+            workout.setScheduledDate(LocalDateTime.of(d, LocalTime.MIDNIGHT));
+        }
+
         workout.setNotes(request.getNotes());
 
         // Update trainer if provided
@@ -120,6 +156,15 @@ public class WorkoutServiceImpl implements WorkoutService {
             User trainer = userRepository.findById(request.getTrainerId())
                     .orElseThrow(() -> new UsernameNotFoundException("Trainer not found"));
             workout.setTrainer(trainer);
+        }
+
+        // Update target muscle groups if provided
+        if (request.getTargetMuscleGroupIds() != null) {
+            List<MuscleGroup> groups = new ArrayList<>();
+            for (String mgId : request.getTargetMuscleGroupIds()) {
+                groups.add(muscleGroupService.findById(mgId));
+            }
+            workout.setTargetMuscleGroups(groups);
         }
 
         // Update sets if provided
@@ -137,6 +182,8 @@ public class WorkoutServiceImpl implements WorkoutService {
                 WorkoutSet set = new WorkoutSet(exercise, setRequest.getReps());
                 set.setWeight(setRequest.getWeight());
                 set.setNotes(setRequest.getNotes());
+                Double w = setRequest.getWeight() != null ? setRequest.getWeight() : 0.0;
+                set.setVolume(w * setRequest.getReps());
                 set = workoutSetRepository.save(set);
                 workout.addSet(set);
             }
@@ -167,6 +214,24 @@ public class WorkoutServiceImpl implements WorkoutService {
     }
 
     @Override
+    public Workout uncompleteSet(String workoutId, String setId) {
+        Workout workout = findById(workoutId);
+        for (WorkoutSet set : workout.getSets()) {
+            if (set.getId().equals(setId)) {
+                set.setCompleted(false);
+                workoutSetRepository.save(set);
+                break;
+            }
+        }
+        // If any set is not completed, mark workout as not completed
+        boolean allCompleted = workout.getSets().stream().allMatch(WorkoutSet::isCompleted);
+        if (!allCompleted) {
+            workout.setCompleted(false);
+        }
+        return workoutRepository.save(workout);
+    }
+
+    @Override
     public Workout completeWorkout(String id) {
         Workout workout = findById(id);
 
@@ -185,17 +250,19 @@ public class WorkoutServiceImpl implements WorkoutService {
         Workout original = findById(id);
 
         // Create new workout with copied data
-        Workout copy = new Workout(original.getName() + " (Copy)", original.getMember());
+        Workout copy = new Workout(original.getName(), original.getMember());
         copy.setDescription(original.getDescription());
         copy.setTrainer(original.getTrainer());
         copy.setScheduledDate(newScheduledDate);
         copy.setNotes(original.getNotes());
+        copy.setTargetMuscleGroups(original.getTargetMuscleGroups());
 
         // Copy sets
         for (WorkoutSet originalSet : original.getSets()) {
             WorkoutSet newSet = new WorkoutSet(originalSet.getExercise(), originalSet.getReps());
             newSet.setWeight(originalSet.getWeight());
             newSet.setNotes(originalSet.getNotes());
+            newSet.setVolume(originalSet.getVolume());
             newSet = workoutSetRepository.save(newSet);
             copy.addSet(newSet);
         }

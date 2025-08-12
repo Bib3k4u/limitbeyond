@@ -17,6 +17,9 @@ public class WorkoutSet {
     private String notes; // Optional notes about the set
     private boolean completed;
 
+    // New: store computed volume for this set (reps * weight, weight defaults to 0)
+    private Double volume;
+
     // Default constructor
     public WorkoutSet() {
     }
@@ -75,5 +78,13 @@ public class WorkoutSet {
 
     public void setCompleted(boolean completed) {
         this.completed = completed;
+    }
+
+    public Double getVolume() {
+        return volume;
+    }
+
+    public void setVolume(Double volume) {
+        this.volume = volume;
     }
 }

@@ -51,6 +51,12 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ userProfile }) => {
       isActive: isActive('/dashboard/exercises'),
     },
     {
+      title: 'Workouts',
+      icon: ClipboardList,
+      path: '/dashboard/workouts',
+      isActive: isActive('/dashboard/workouts'),
+    },
+    {
       title: 'Account',
       icon: User,
       path: '/dashboard/account',

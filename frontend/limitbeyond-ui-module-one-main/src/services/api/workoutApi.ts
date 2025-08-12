@@ -34,7 +34,16 @@ export const workoutApi = {
     return axiosInstance.post(`/workouts/${workoutId}/sets/${setId}/complete`);
   },
 
+  uncompleteSet: (workoutId: string, setId: string) => {
+    return axiosInstance.post(`/workouts/${workoutId}/sets/${setId}/uncomplete`);
+  },
+
+  completeWorkout: (workoutId: string) => {
+    return axiosInstance.post(`/workouts/${workoutId}/complete`);
+  },
+
   copyWorkout: (workoutId: string, newDate: string) => {
+    // newDate should be yyyy-MM-dd for backend
     return axiosInstance.post<Workout>(`/workouts/${workoutId}/copy?newDate=${newDate}`);
   }
 };

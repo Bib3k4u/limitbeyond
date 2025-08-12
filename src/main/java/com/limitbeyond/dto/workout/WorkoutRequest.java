@@ -1,8 +1,10 @@
 package com.limitbeyond.dto.workout;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -12,7 +14,7 @@ public class WorkoutRequest {
 
     private String description;
 
-    @NotNull
+    // Optional: when creating for current user, this may be null; else required
     private String memberId; // The member who will perform the workout
 
     private String trainerId; // Optional: The trainer assigning the workout
@@ -21,6 +23,14 @@ public class WorkoutRequest {
 
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime scheduledDate;
+
+    // Convenience: allow simple ISO date via "date" separate from scheduledDate
+    @JsonProperty("date")
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private LocalDate scheduledLocalDate;
+
+    // Target muscle groups the workout aims to train
+    private List<String> targetMuscleGroupIds;
 
     private String notes;
 
@@ -117,6 +127,22 @@ public class WorkoutRequest {
 
     public void setScheduledDate(LocalDateTime scheduledDate) {
         this.scheduledDate = scheduledDate;
+    }
+
+    public LocalDate getScheduledLocalDate() {
+        return scheduledLocalDate;
+    }
+
+    public void setScheduledLocalDate(LocalDate scheduledLocalDate) {
+        this.scheduledLocalDate = scheduledLocalDate;
+    }
+
+    public List<String> getTargetMuscleGroupIds() {
+        return targetMuscleGroupIds;
+    }
+
+    public void setTargetMuscleGroupIds(List<String> targetMuscleGroupIds) {
+        this.targetMuscleGroupIds = targetMuscleGroupIds;
     }
 
     public String getNotes() {
