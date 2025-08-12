@@ -1,14 +1,22 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
-import { Plus, Calendar, Search, Copy, Edit, Trash2 } from 'lucide-react';
+import { Plus, Calendar, Search, Copy, Edit, Trash2, TrendingUp, Filter } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { workoutApi } from '@/services/api/workoutApi';
+import { exerciseTemplatesApi } from '@/services/api/exerciseTemplatesApi';
 import { Workout } from '@/types/workout';
 import { DateRangePicker } from '@/components/DateRangePicker';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,72 +28,195 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
+interface VolumeDataPoint {
+  date: string;
+  volume: number;
+  workoutName: string;
+}
+
 export const WorkoutList = () => {
   const { toast } = useToast();
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [dateRange, setDateRange] = useState<{ from: Date; to: Date } | undefined>();
-  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; workoutId: string | null; workoutName: string }>({
-    open: false,
-    workoutId: null,
-    workoutName: ''
+  const [filteredWorkouts, setFilteredWorkouts] = useState<Workout[]>([]);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [workoutToDelete, setWorkoutToDelete] = useState<Workout | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
+    from: undefined,
+    to: undefined,
   });
+  
+  // Graph state
+  const [selectedExercise, setSelectedExercise] = useState<string>('all');
+  const [exercises, setExercises] = useState<Array<{ id: string; name: string }>>([]);
+  const [volumeData, setVolumeData] = useState<VolumeDataPoint[]>([]);
+  const [graphLoading, setGraphLoading] = useState(false);
 
+  // Fetch workouts and exercises
   useEffect(() => {
-    const fetchWorkouts = async () => {
+    const fetchData = async () => {
       try {
-        let response;
-        if (dateRange?.from && dateRange?.to) {
-          response = await workoutApi.getByDateRange(
-            format(dateRange.from, 'yyyy-MM-dd'),
-            format(dateRange.to, 'yyyy-MM-dd')
-          );
-        } else {
-          response = await workoutApi.getAll();
+        setLoading(true);
+        
+        // Fetch workouts
+        const workoutsResponse = await workoutApi.getAll();
+        if (workoutsResponse?.data) {
+          setWorkouts(workoutsResponse.data);
         }
-        if (response?.data) {
-          setWorkouts(response.data as any);
+        
+        // Fetch exercises for filter
+        const exercisesResponse = await exerciseTemplatesApi.getAll();
+        if (exercisesResponse?.data) {
+          setExercises(exercisesResponse.data);
         }
       } catch (error) {
-        toast({ title: 'Error', description: 'Failed to load workouts', variant: 'destructive' });
+        console.error('Error fetching data:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to load workouts. Please try again.',
+          variant: 'destructive',
+        });
       } finally {
         setLoading(false);
       }
     };
 
-    fetchWorkouts();
-  }, [dateRange, toast]);
+    fetchData();
+  }, [toast]);
 
-  const handleDelete = async () => {
-    if (!deleteDialog.workoutId) return;
-    
+  // Filter workouts based on search and date range
+  useEffect(() => {
+    let filtered = workouts;
+
+    // Apply search filter
+    if (searchTerm.trim()) {
+      filtered = filtered.filter(workout =>
+        workout.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        workout.description?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    // Apply date range filter
+    if (dateRange.from || dateRange.to) {
+      filtered = filtered.filter(workout => {
+        const workoutDate = new Date(workout.scheduledDate);
+        const fromDate = dateRange.from ? new Date(dateRange.from) : new Date(0);
+        const toDate = dateRange.to ? new Date(dateRange.to) : new Date();
+        
+        return workoutDate >= fromDate && workoutDate <= toDate;
+      });
+    }
+
+    setFilteredWorkouts(filtered);
+  }, [workouts, searchTerm, dateRange]);
+
+  // Generate volume data for graph
+  useEffect(() => {
+    const generateVolumeData = async () => {
+      if (workouts.length === 0) return;
+      
+      setGraphLoading(true);
+      try {
+        // Get all workouts for the selected exercise
+        let relevantWorkouts = workouts;
+        
+        if (selectedExercise !== 'all') {
+          // Filter workouts that contain the selected exercise
+          relevantWorkouts = workouts.filter(workout => 
+            workout.sets.some(set => set.exercise.id === selectedExercise)
+          );
+        }
+
+        // Group by date and calculate total volume
+        const volumeMap = new Map<string, { volume: number; workoutNames: string[] }>();
+        
+        relevantWorkouts.forEach(workout => {
+          const date = format(new Date(workout.scheduledDate), 'yyyy-MM-dd');
+          let workoutVolume = 0;
+          
+                  // Calculate volume for this workout
+        workout.sets.forEach(set => {
+          if (selectedExercise === 'all' || set.exercise.id === selectedExercise) {
+            const weight = set.weight || 0;
+            const reps = set.reps || 0;
+            workoutVolume += weight * reps;
+          }
+        });
+        
+        // Include workouts even with 0 volume to show all workout days
+        if (volumeMap.has(date)) {
+          const existing = volumeMap.get(date)!;
+          existing.volume += workoutVolume;
+          existing.workoutNames.push(workout.name);
+        } else {
+          volumeMap.set(date, { volume: workoutVolume, workoutNames: [workout.name] });
+        }
+        });
+
+        // Convert to array and sort by date
+        const data: VolumeDataPoint[] = Array.from(volumeMap.entries())
+          .map(([date, { volume, workoutNames }]) => ({
+            date,
+            volume: Math.round(volume * 100) / 100, // Round to 2 decimal places
+            workoutName: workoutNames.join(', ')
+          }))
+          .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+        setVolumeData(data);
+      } catch (error) {
+        console.error('Error generating volume data:', error);
+      } finally {
+        setGraphLoading(false);
+      }
+    };
+
+    generateVolumeData();
+  }, [workouts, selectedExercise]);
+
+  const handleDeleteWorkout = async () => {
+    if (!workoutToDelete) return;
+
+    setDeleting(true);
     try {
-      await workoutApi.delete(deleteDialog.workoutId);
-      setWorkouts(prev => prev.filter(w => w.id !== deleteDialog.workoutId));
-      toast({ title: 'Success', description: 'Workout deleted successfully' });
-      setDeleteDialog({ open: false, workoutId: null, workoutName: '' });
+      await workoutApi.delete(workoutToDelete.id);
+      setWorkouts(workouts.filter(w => w.id !== workoutToDelete.id));
+      toast({
+        title: 'Success',
+        description: 'Workout deleted successfully!',
+      });
+      setShowDeleteDialog(false);
+      setWorkoutToDelete(null);
     } catch (error) {
-      toast({ title: 'Error', description: 'Failed to delete workout', variant: 'destructive' });
+      console.error('Error deleting workout:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to delete workout. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setDeleting(false);
     }
   };
 
-  const openDeleteDialog = (workoutId: string, workoutName: string) => {
-    setDeleteDialog({ open: true, workoutId, workoutName });
+  const openDeleteDialog = (workout: Workout) => {
+    setWorkoutToDelete(workout);
+    setShowDeleteDialog(true);
   };
 
-  const filteredWorkouts = (workouts as any[]).filter((workout: any) => 
-    workout.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    workout.description?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-lb-accent"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold">Workouts</h1>
-          <p className="text-muted-foreground">Manage your workout sessions</p>
-        </div>
+        <h1 className="text-2xl font-bold">My Workouts</h1>
         <div className="flex gap-2">
           <Link to="/dashboard/workouts/templates">
             <Button variant="outline">
@@ -94,7 +225,7 @@ export const WorkoutList = () => {
             </Button>
           </Link>
           <Link to="/dashboard/workouts/new">
-            <Button>
+            <Button className="bg-lb-accent hover:bg-lb-accent/90">
               <Plus className="h-4 w-4 mr-2" />
               New Workout
             </Button>
@@ -102,79 +233,204 @@ export const WorkoutList = () => {
         </div>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Search workouts..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-10" />
+      {/* Volume Progress Graph */}
+      <Card className="p-6 bg-lb-card border-white/10">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-4">
+          <h2 className="text-lg font-semibold flex items-center gap-2 text-white">
+            <TrendingUp className="h-5 w-5 text-lb-accent" />
+            Volume Progress
+          </h2>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <Filter className="h-4 w-4 text-gray-400" />
+            <Select value={selectedExercise} onValueChange={setSelectedExercise}>
+              <SelectTrigger className="w-full sm:w-[200px] bg-lb-darker border-white/20 text-white">
+                <SelectValue placeholder="Select exercise" />
+              </SelectTrigger>
+              <SelectContent className="bg-lb-card border-white/10">
+                <SelectItem value="all" className="text-white hover:bg-lb-darker">All Exercises</SelectItem>
+                {exercises.map((exercise) => (
+                  <SelectItem key={exercise.id} value={exercise.id} className="text-white hover:bg-lb-darker">
+                    {exercise.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
-        <DateRangePicker onChange={setDateRange as any} />
+
+        {graphLoading ? (
+          <div className="flex justify-center items-center h-32">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-lb-accent"></div>
+          </div>
+        ) : volumeData.length > 0 ? (
+          <div className="space-y-4">
+            {/* Simple Bar Chart */}
+            <div className="w-full h-32 flex items-end gap-2 overflow-x-auto">
+              {volumeData.map((dataPoint, index) => (
+                <div key={dataPoint.date} className="flex-1 flex flex-col items-center min-w-[60px]">
+                  <div className="w-full bg-lb-darker rounded-t">
+                    <div 
+                      className="bg-lb-accent rounded-t transition-all duration-300"
+                      style={{ 
+                        height: `${Math.min(100, (dataPoint.volume / Math.max(...volumeData.map(d => d.volume))) * 100)}%` 
+                      }}
+                    />
+                  </div>
+                  <div className="text-xs mt-1 text-center text-gray-400">
+                    {format(new Date(dataPoint.date), 'MM/dd')}
+                  </div>
+                </div>
+              ))}
+            </div>
+            
+            {/* Volume Summary */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+              <div className="text-center p-3 bg-lb-accent/5 rounded-lg border border-white/10">
+                <div className="font-semibold text-lb-accent">
+                  {volumeData.length > 0 ? Math.max(...volumeData.map(d => d.volume)) : 0}
+                </div>
+                <div className="text-gray-400">Peak Volume (kg)</div>
+              </div>
+              <div className="text-center p-3 bg-lb-accent/5 rounded-lg border border-white/10">
+                <div className="font-semibold text-lb-accent">
+                  {volumeData.length > 0 ? Math.round(volumeData.reduce((sum, d) => sum + d.volume, 0) / volumeData.length * 100) / 100 : 0}
+                </div>
+                <div className="text-gray-400">Average Volume (kg)</div>
+              </div>
+              <div className="text-center p-3 bg-lb-accent/5 rounded-lg border border-white/10">
+                <div className="font-semibold text-lb-accent">
+                  {volumeData.length}
+                </div>
+                <div className="text-gray-400">Workout Days</div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="text-center py-8 text-gray-400">
+            {selectedExercise === 'all' 
+              ? 'No workout data available to display volume progress.'
+              : 'No volume data available for the selected exercise.'
+            }
+            {workouts.length > 0 && (
+              <div className="mt-4">
+                <p className="text-sm">You have {workouts.length} workout(s) but no volume data.</p>
+                <p className="text-xs text-gray-500">Add weight and reps to your sets to see volume progress.</p>
+              </div>
+            )}
+          </div>
+        )}
+      </Card>
+
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+        <div className="relative w-full sm:flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Input
+            placeholder="Search workouts..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10 bg-lb-darker border-white/20 text-white placeholder:text-gray-500 w-full"
+          />
+        </div>
+        <DateRangePicker
+          dateRange={dateRange}
+          onDateRangeChange={setDateRange}
+        />
       </div>
 
-      <div className="grid gap-4">
-        {filteredWorkouts.map((workout: any) => (
-          <Card key={workout.id} className="p-4 hover:bg-accent/5 transition-colors">
-            <div className="flex justify-between items-start">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-2">
-                  <h3 className="font-semibold">{workout.name}</h3>
-                  {workout.completed && (
-                    <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">
-                      Completed
-                    </span>
-                  )}
-                </div>
-                <p className="text-sm text-muted-foreground mb-2">{workout.description}</p>
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4" />
-                  <span className="text-sm">{workout.scheduledDate ? format(new Date(workout.scheduledDate), 'PPP') : '-'}</span>
-                </div>
-              </div>
-              <div className="flex flex-col items-end gap-2">
-                <div className="text-right">
-                  <p className="text-sm font-medium">{workout.sets.length} sets</p>
-                  {workout.exercises?.length > 0 && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Vol: {workout.exercises.reduce((sum: number, e: any) => sum + (e.totalVolume || 0), 0)}
+      {/* Workouts List */}
+      {filteredWorkouts.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredWorkouts.map((workout) => (
+            <Card key={workout.id} className="glass-card p-4 hover:translate-y-[-2px] transition-all">
+              <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold truncate text-white">{workout.name}</h3>
+                  {workout.description && (
+                    <p className="text-sm text-gray-400 mt-1 line-clamp-2">
+                      {workout.description}
                     </p>
                   )}
+                  <div className="flex items-center gap-2 mt-2">
+                    <Calendar className="h-4 w-4 text-gray-400" />
+                    <span className="text-sm text-gray-400">
+                      {format(new Date(workout.scheduledDate), 'MMM dd, yyyy')}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 mt-2">
+                    <span className="text-sm text-gray-400">{workout.sets.length} sets</span>
+                    {workout.completed && (
+                      <span className="text-xs bg-green-900/20 text-green-400 px-2 py-1 rounded-full border border-green-500/30">
+                        Completed
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-col gap-2 w-full sm:w-auto">
                   <Link to={`/dashboard/workouts/${workout.id}`}>
-                    <Button size="sm" variant="outline">
+                    <Button variant="outline" size="sm" className="w-full sm:w-auto border-white/20 text-white hover:bg-white/10">
                       View
                     </Button>
                   </Link>
-                  <Link to={`/dashboard/workouts/${workout.id}/edit`}>
-                    <Button size="sm" variant="outline">
+                  <Link to={`/dashboard/workouts/edit/${workout.id}`}>
+                    <Button variant="outline" size="sm" className="w-full sm:w-auto border-white/20 text-white hover:bg-white/10">
                       <Edit className="h-4 w-4" />
                     </Button>
                   </Link>
                   <Button
+                    variant="outline"
                     size="sm"
-                    variant="destructive"
-                    onClick={() => openDeleteDialog(workout.id, workout.name)}
+                    onClick={() => openDeleteDialog(workout)}
+                    className="text-red-400 border-red-500/50 hover:bg-red-500/20 w-full sm:w-auto"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
-            </div>
-          </Card>
-        ))}
-      </div>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <div className="text-center p-6">
+          <div className="bg-lb-darker rounded-full p-4 inline-flex mb-4">
+            <Search className="h-10 w-10 text-gray-400" />
+          </div>
+          <h3 className="text-lg font-medium mb-2 text-white">No workouts found</h3>
+          <p className="text-gray-400">
+            {workouts.length === 0
+              ? "You haven't created any workouts yet. Start by creating your first workout!"
+              : searchTerm || dateRange.from || dateRange.to
+              ? "Try adjusting your search criteria or date range"
+              : "No workouts available."}
+          </p>
+          {workouts.length === 0 && (
+            <Link to="/dashboard/workouts/new" className="mt-4 inline-block">
+              <Button className="bg-lb-accent hover:bg-lb-accent/90">
+                <Plus className="h-4 w-4 mr-2" />
+                Create Your First Workout
+              </Button>
+            </Link>
+          )}
+        </div>
+      )}
 
-      <AlertDialog open={deleteDialog.open} onOpenChange={(open) => setDeleteDialog(prev => ({ ...prev, open }))}>
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Workout</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete "{deleteDialog.workoutName}"? This action cannot be undone.
+              Are you sure you want to delete "{workoutToDelete?.name}"? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Delete
+            <AlertDialogAction
+              onClick={handleDeleteWorkout}
+              className="bg-red-600 hover:bg-red-700"
+              disabled={deleting}
+            >
+              {deleting ? 'Deleting...' : 'Delete'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

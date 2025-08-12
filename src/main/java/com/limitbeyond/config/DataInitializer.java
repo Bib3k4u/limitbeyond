@@ -52,7 +52,7 @@ public class DataInitializer implements CommandLineRunner {
     private void initializeExerciseTemplates() {
         if (exerciseTemplateRepository.count() == 0) {
             List<ExerciseTemplate> exercises = Arrays.asList(
-                // Basic bodyweight exercises
+                // Basic bodyweight exercises (used in templates)
                 createExercise("Push-ups", "Basic push-ups for chest and triceps", "Chest"),
                 createExercise("Pull-ups", "Bodyweight pull-ups for back and biceps", "Back"),
                 createExercise("Dips", "Bodyweight dips for triceps and chest", "Triceps"),
@@ -68,6 +68,18 @@ public class DataInitializer implements CommandLineRunner {
                 createExercise("Dead Bugs", "Core control exercise", "Core"),
                 createExercise("Superman", "Back strengthening exercise", "Back"),
                 createExercise("Rows", "Bodyweight rows for back", "Back"),
+                
+                // Additional basic exercises
+                createExercise("Jumping Jacks", "Cardiovascular exercise", "Core"),
+                createExercise("High Knees", "Cardiovascular exercise", "Core"),
+                createExercise("Butterfly Kicks", "Core exercise", "Core"),
+                createExercise("Russian Twists", "Core rotation exercise", "Core"),
+                createExercise("Wall Sit", "Isometric leg exercise", "Quads"),
+                createExercise("Step-ups", "Leg exercise using stairs or platform", "Quads"),
+                createExercise("Donkey Kicks", "Glute exercise", "Glutes"),
+                createExercise("Fire Hydrants", "Glute and hip exercise", "Glutes"),
+                createExercise("Cobra Stretch", "Back stretch and strengthen", "Back"),
+                createExercise("Cat-Cow Stretch", "Spine mobility exercise", "Back"),
                 
                 // Weighted exercises (if available)
                 createExercise("Bench Press", "Flat bench press for chest development", "Chest"),
