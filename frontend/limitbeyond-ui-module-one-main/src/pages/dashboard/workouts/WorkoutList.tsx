@@ -27,6 +27,28 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Line } from 'react-chartjs-2';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+} from 'chart.js';
+
+// Register ChartJS components
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend
+);
 
 interface VolumeDataPoint {
   date: string;
@@ -47,7 +69,7 @@ export const WorkoutList = () => {
     from: undefined,
     to: undefined,
   });
-  
+
   // Graph state
   const [selectedExercise, setSelectedExercise] = useState<string>('all');
   const [exercises, setExercises] = useState<Array<{ id: string; name: string }>>([]);
@@ -59,13 +81,13 @@ export const WorkoutList = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        
+
         // Fetch workouts
         const workoutsResponse = await workoutApi.getAll();
         if (workoutsResponse?.data) {
           setWorkouts(workoutsResponse.data);
         }
-        
+
         // Fetch exercises for filter
         const exercisesResponse = await exerciseTemplatesApi.getAll();
         if (exercisesResponse?.data) {
@@ -104,7 +126,7 @@ export const WorkoutList = () => {
         const workoutDate = new Date(workout.scheduledDate);
         const fromDate = dateRange.from ? new Date(dateRange.from) : new Date(0);
         const toDate = dateRange.to ? new Date(dateRange.to) : new Date();
-        
+
         return workoutDate >= fromDate && workoutDate <= toDate;
       });
     }
@@ -116,43 +138,42 @@ export const WorkoutList = () => {
   useEffect(() => {
     const generateVolumeData = async () => {
       if (workouts.length === 0) return;
-      
+
       setGraphLoading(true);
       try {
-        // Get all workouts for the selected exercise
         let relevantWorkouts = workouts;
-        
+
         if (selectedExercise !== 'all') {
           // Filter workouts that contain the selected exercise
-          relevantWorkouts = workouts.filter(workout => 
+          relevantWorkouts = workouts.filter(workout =>
             workout.sets.some(set => set.exercise.id === selectedExercise)
           );
         }
 
         // Group by date and calculate total volume
         const volumeMap = new Map<string, { volume: number; workoutNames: string[] }>();
-        
+
         relevantWorkouts.forEach(workout => {
           const date = format(new Date(workout.scheduledDate), 'yyyy-MM-dd');
           let workoutVolume = 0;
-          
-                  // Calculate volume for this workout
-        workout.sets.forEach(set => {
-          if (selectedExercise === 'all' || set.exercise.id === selectedExercise) {
-            const weight = set.weight || 0;
-            const reps = set.reps || 0;
-            workoutVolume += weight * reps;
+
+          // Calculate volume for this workout
+          workout.sets.forEach(set => {
+            if (selectedExercise === 'all' || set.exercise.id === selectedExercise) {
+              const weight = set.weight || 0;
+              const reps = set.reps || 0;
+              workoutVolume += weight * reps;
+            }
+          });
+
+          // Include workouts even with 0 volume to show all workout days
+          if (volumeMap.has(date)) {
+            const existing = volumeMap.get(date)!;
+            existing.volume += workoutVolume;
+            existing.workoutNames.push(workout.name);
+          } else {
+            volumeMap.set(date, { volume: workoutVolume, workoutNames: [workout.name] });
           }
-        });
-        
-        // Include workouts even with 0 volume to show all workout days
-        if (volumeMap.has(date)) {
-          const existing = volumeMap.get(date)!;
-          existing.volume += workoutVolume;
-          existing.workoutNames.push(workout.name);
-        } else {
-          volumeMap.set(date, { volume: workoutVolume, workoutNames: [workout.name] });
-        }
         });
 
         // Convert to array and sort by date
@@ -233,7 +254,7 @@ export const WorkoutList = () => {
         </div>
       </div>
 
-      {/* Volume Progress Graph */}
+      {/* Volume Progress Graph Card */}
       <Card className="p-6 bg-lb-card border-white/10">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-4">
           <h2 className="text-lg font-semibold flex items-center gap-2 text-white">
@@ -259,55 +280,77 @@ export const WorkoutList = () => {
         </div>
 
         {graphLoading ? (
-          <div className="flex justify-center items-center h-32">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-lb-accent"></div>
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-lb-accent"></div>
           </div>
         ) : volumeData.length > 0 ? (
-          <div className="space-y-4">
-            {/* Simple Bar Chart */}
-            <div className="w-full h-32 flex items-end gap-2 overflow-x-auto">
-              {volumeData.map((dataPoint, index) => (
-                <div key={dataPoint.date} className="flex-1 flex flex-col items-center min-w-[60px]">
-                  <div className="w-full bg-lb-darker rounded-t">
-                    <div 
-                      className="bg-lb-accent rounded-t transition-all duration-300"
-                      style={{ 
-                        height: `${Math.min(100, (dataPoint.volume / Math.max(...volumeData.map(d => d.volume))) * 100)}%` 
-                      }}
-                    />
-                  </div>
-                  <div className="text-xs mt-1 text-center text-gray-400">
-                    {format(new Date(dataPoint.date), 'MM/dd')}
-                  </div>
-                </div>
-              ))}
-            </div>
-            
-            {/* Volume Summary */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
-              <div className="text-center p-3 bg-lb-accent/5 rounded-lg border border-white/10">
-                <div className="font-semibold text-lb-accent">
-                  {volumeData.length > 0 ? Math.max(...volumeData.map(d => d.volume)) : 0}
-                </div>
-                <div className="text-gray-400">Peak Volume (kg)</div>
-              </div>
-              <div className="text-center p-3 bg-lb-accent/5 rounded-lg border border-white/10">
-                <div className="font-semibold text-lb-accent">
-                  {volumeData.length > 0 ? Math.round(volumeData.reduce((sum, d) => sum + d.volume, 0) / volumeData.length * 100) / 100 : 0}
-                </div>
-                <div className="text-gray-400">Average Volume (kg)</div>
-              </div>
-              <div className="text-center p-3 bg-lb-accent/5 rounded-lg border border-white/10">
-                <div className="font-semibold text-lb-accent">
-                  {volumeData.length}
-                </div>
-                <div className="text-gray-400">Workout Days</div>
-              </div>
-            </div>
+          <div className="w-full h-64">
+            <Line
+              data={{
+                labels: volumeData.map(d => d.date),
+                datasets: [
+                  {
+                    label: selectedExercise === 'all' ? 'Total Volume (kg)' : exercises.find(e => e.id === selectedExercise)?.name + ' Volume (kg)',
+                    data: volumeData.map(d => d.volume),
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                    tension: 0.3,
+                    fill: true,
+                  },
+                ],
+              }}
+              options={{
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                  x: {
+                    title: {
+                      display: true,
+                      text: 'Date',
+                      color: '#9CA3AF',
+                    },
+                    ticks: {
+                      color: '#9CA3AF',
+                    },
+                    grid: {
+                      color: 'rgba(255, 255, 255, 0.1)',
+                    },
+                  },
+                  y: {
+                    title: {
+                      display: true,
+                      text: 'Volume (kg)',
+                      color: '#9CA3AF',
+                    },
+                    ticks: {
+                      color: '#9CA3AF',
+                    },
+                    grid: {
+                      color: 'rgba(255, 255, 255, 0.1)',
+                    },
+                  },
+                },
+                plugins: {
+                  legend: {
+                    labels: {
+                      color: '#D1D5DB',
+                    },
+                  },
+                  tooltip: {
+                    callbacks: {
+                      afterBody: (context) => {
+                        const dataPoint = volumeData[context[0].dataIndex];
+                        return [`Workouts: ${dataPoint.workoutName}`];
+                      },
+                    },
+                  },
+                },
+              }}
+            />
           </div>
         ) : (
           <div className="text-center py-8 text-gray-400">
-            {selectedExercise === 'all' 
+            {selectedExercise === 'all'
               ? 'No workout data available to display volume progress.'
               : 'No volume data available for the selected exercise.'
             }

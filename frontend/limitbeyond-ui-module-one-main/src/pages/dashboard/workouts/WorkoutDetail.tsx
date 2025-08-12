@@ -128,10 +128,10 @@ const WorkoutDetail = () => {
       const response = await workoutApi.completeSet(workout.id, setId);
       if (response?.data) {
         setWorkout(response.data);
-        toast({
-          title: 'Success',
+      toast({
+        title: 'Success',
           description: 'Set marked as completed!',
-        });
+      });
       }
     } catch (error) {
       console.error('Error completing set:', error);
@@ -173,10 +173,10 @@ const WorkoutDetail = () => {
       const response = await workoutApi.completeWorkout(workout.id);
       if (response?.data) {
         setWorkout(response.data);
-        toast({
-          title: 'Success',
-          description: 'Workout completed! Great job!',
-        });
+      toast({
+        title: 'Success',
+        description: 'Workout completed! Great job!',
+      });
       }
     } catch (error) {
       console.error('Error completing workout:', error);
@@ -196,12 +196,12 @@ const WorkoutDetail = () => {
     try {
       const response = await workoutApi.copyWorkout(workout.id, format(selectedDate, 'yyyy-MM-dd'));
       if (response?.data) {
-        toast({
-          title: 'Success',
+      toast({
+        title: 'Success',
           description: 'Workout copied successfully!',
-        });
-        setShowCopyDialog(false);
-        navigate('/dashboard/workouts');
+      });
+      setShowCopyDialog(false);
+      navigate('/dashboard/workouts');
       }
     } catch (error) {
       console.error('Error copying workout:', error);
@@ -263,7 +263,7 @@ const WorkoutDetail = () => {
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
           </Button>
-          <div>
+        <div>
             <h1 className="text-2xl font-bold">{workout.name}</h1>
             <p className="text-muted-foreground">{workout.description}</p>
           </div>
@@ -278,14 +278,14 @@ const WorkoutDetail = () => {
             <Edit className="h-4 w-4 mr-2" />
             Edit
           </Button>
-          <Button 
-            variant="outline" 
+            <Button
+              variant="outline"
             onClick={() => setShowDeleteDialog(true)}
             className="text-red-600 hover:text-red-700"
           >
             <Trash2 className="h-4 w-4 mr-2" />
             Delete
-          </Button>
+            </Button>
         </div>
       </div>
 
@@ -333,7 +333,7 @@ const WorkoutDetail = () => {
                 <span className="text-lb-accent">{Math.round(overallProgress)}%</span>
               </div>
               <Progress value={overallProgress} className="h-2" />
-            </div>
+          </div>
           </CardContent>
         </Card>
       </div>
@@ -438,7 +438,7 @@ const WorkoutDetail = () => {
                     </div>
                     
                     <div className="flex items-center gap-2 w-full sm:w-auto">
-                      {set.completed ? (
+                {set.completed ? (
                         <Button
                           size="sm"
                           variant="outline"
@@ -448,24 +448,24 @@ const WorkoutDetail = () => {
                           <CheckCircle className="h-4 w-4 mr-1" />
                           Completed
                         </Button>
-                      ) : (
-                        <Button
-                          size="sm"
-                          onClick={() => handleCompleteSet(set.id)}
+                ) : (
+                  <Button
+                    size="sm"
+                    onClick={() => handleCompleteSet(set.id)}
                           className="bg-lb-accent hover:bg-lb-accent/90 w-full sm:w-auto"
-                        >
+                  >
                           <Circle className="h-4 w-4 mr-1" />
-                          Complete Set
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                    Complete Set
+                  </Button>
+                )}
               </div>
+            </div>
+          ))}
+        </div>
             </CardContent>
           </Card>
         ))}
-      </div>
+          </div>
 
       {/* Copy Workout Dialog */}
       <AlertDialog open={showCopyDialog} onOpenChange={setShowCopyDialog}>
@@ -485,12 +485,12 @@ const WorkoutDetail = () => {
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0">
-                <CalendarComponent
-                  mode="single"
-                  selected={selectedDate}
-                  onSelect={setSelectedDate}
+            <CalendarComponent
+              mode="single"
+              selected={selectedDate}
+              onSelect={setSelectedDate}
                   initialFocus
-                />
+            />
               </PopoverContent>
             </Popover>
           </div>

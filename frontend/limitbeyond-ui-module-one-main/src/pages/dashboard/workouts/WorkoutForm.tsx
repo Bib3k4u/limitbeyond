@@ -138,7 +138,7 @@ const WorkoutForm = () => {
         }
 
         // Load existing workout data if editing
-        if (id) {
+    if (id) {
           const workoutResponse = await workoutApi.getById(id);
           if (workoutResponse?.data) {
             const workout = workoutResponse.data;
@@ -155,7 +155,7 @@ const WorkoutForm = () => {
             workout.sets.forEach(set => {
               if (!exerciseMap.has(set.exercise.id)) {
                 exerciseMap.set(set.exercise.id, {
-                  exerciseId: set.exercise.id,
+                exerciseId: set.exercise.id,
                   exerciseName: set.exercise.name,
                   sets: []
                 });
@@ -169,8 +169,8 @@ const WorkoutForm = () => {
             });
             setSelectedExercises(Array.from(exerciseMap.values()));
           }
-        }
-      } catch (error) {
+          }
+        } catch (error) {
         console.error('Error loading data:', error);
         setDataError('Failed to load data. Please try again.');
       } finally {
@@ -184,11 +184,11 @@ const WorkoutForm = () => {
   const handleExerciseSelect = (exercise: ExerciseTemplate) => {
     // Check if exercise is already selected
     if (selectedExercises.some(se => se.exerciseId === exercise.id)) {
-      toast({
+          toast({
         title: 'Exercise already selected',
         description: `${exercise.name} is already in your workout.`,
-        variant: 'destructive',
-      });
+            variant: 'destructive',
+          });
       return;
     }
 
@@ -339,24 +339,24 @@ const WorkoutForm = () => {
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <FormField
-              control={form.control}
-              name="name"
+              <FormField
+                control={form.control}
+                name="name"
               rules={nameRules}
-              render={({ field }) => (
-                <FormItem>
+                render={({ field }) => (
+                  <FormItem>
                   <FormLabel className="text-white">Workout Name *</FormLabel>
-                  <FormControl>
+                    <FormControl>
                     <Input 
                       placeholder="Enter workout name" 
                       {...field} 
                       className="bg-lb-dark border-white/20 text-white placeholder:text-gray-500"
                     />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
             <FormField
               control={form.control}
@@ -378,69 +378,69 @@ const WorkoutForm = () => {
             />
           </div>
 
-          <FormField
-            control={form.control}
-            name="description"
-            render={({ field }) => (
-              <FormItem>
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
                 <FormLabel className="text-white">Description</FormLabel>
-                <FormControl>
-                  <Textarea 
-                    placeholder="Enter workout description" 
-                    {...field} 
+                    <FormControl>
+                      <Textarea
+                        placeholder="Enter workout description"
+                        {...field}
                     className="bg-lb-dark border-white/20 text-white placeholder:text-gray-500"
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
           {(currentUser?.roles.includes('TRAINER') || currentUser?.roles.includes('ADMIN')) && (
-            <FormField
-              control={form.control}
-              name="memberId"
+                <FormField
+                  control={form.control}
+                  name="memberId"
               rules={memberRules}
-              render={({ field }) => (
-                <FormItem>
+                  render={({ field }) => (
+                    <FormItem>
                   <FormLabel className="text-white">Member *</FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
+                        <FormControl>
                       <SelectTrigger className="bg-lb-dark border-white/20 text-white">
                         <SelectValue placeholder="Select a member" />
-                      </SelectTrigger>
-                    </FormControl>
+                          </SelectTrigger>
+                        </FormControl>
                     <SelectContent className="bg-lb-card border-white/10">
-                      {members.map((member) => (
+                          {members.map((member) => (
                         <SelectItem key={member.id} value={member.id} className="text-white hover:bg-lb-darker">
                           {member.firstName} {member.lastName} ({member.username})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               )}
-            />
-          )}
 
-          <FormField
-            control={form.control}
+              <FormField
+                control={form.control}
             name="notes"
-            render={({ field }) => (
-              <FormItem>
+                render={({ field }) => (
+                  <FormItem>
                 <FormLabel className="text-white">Notes</FormLabel>
-                <FormControl>
+                    <FormControl>
                   <Textarea 
                     placeholder="Enter any additional notes" 
                     {...field} 
                     className="bg-lb-dark border-white/20 text-white placeholder:text-gray-500"
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
           {/* Exercise Selection Section */}
           <div className="space-y-4">
@@ -491,8 +491,8 @@ const WorkoutForm = () => {
                       
                       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full sm:w-auto">
                         <div className="flex items-center gap-2 w-full sm:w-auto">
-                          <Input
-                            type="number"
+                            <Input
+                              type="number"
                             placeholder="Reps"
                             value={set.reps}
                             onChange={(e) => updateSet(exerciseIndex, setIndex, 'reps', parseInt(e.target.value) || 0)}
@@ -503,14 +503,14 @@ const WorkoutForm = () => {
                         </div>
 
                         <div className="flex items-center gap-2 w-full sm:w-auto">
-                          <Input
-                            type="number"
+                            <Input
+                              type="number"
                             placeholder="Weight"
                             value={set.weight}
                             onChange={(e) => updateSet(exerciseIndex, setIndex, 'weight', parseFloat(e.target.value) || 0)}
                             className="w-20 bg-lb-dark border-white/20 text-white"
                             min="0"
-                            step="0.5"
+                              step="0.5"
                           />
                           <span className="text-sm text-gray-400">kg</span>
                         </div>
@@ -535,23 +535,23 @@ const WorkoutForm = () => {
                           Remove
                         </Button>
                       )}
-                    </div>
+                  </div>
                   ))}
 
-                  <Button
-                    type="button"
+                    <Button
+                      type="button"
                     variant="outline"
-                    size="sm"
+                      size="sm"
                     onClick={() => addSetToExercise(exerciseIndex)}
                     className="w-full border-white/20 text-white hover:bg-white/10"
-                  >
+                    >
                     <Plus className="h-4 w-4 mr-2" />
                     Add Set
-                  </Button>
+                    </Button>
                 </div>
               </Card>
-            ))}
-          </div>
+              ))}
+            </div>
 
           <div className="flex justify-end gap-4">
             <Button
