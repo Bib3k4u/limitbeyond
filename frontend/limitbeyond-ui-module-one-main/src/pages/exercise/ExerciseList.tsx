@@ -8,6 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Search, Filter, ChevronRight, Loader2 } from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
+import { useForm } from 'react-hook-form';
+import { Modal } from '@/components/ui/dialog';
+import userService from '@/services/api/userService';
 import {
   Select,
   SelectContent,
@@ -38,6 +41,10 @@ const ExerciseList = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showBulkModal, setShowBulkModal] = useState(false);
+  const [isAdminOrTrainer, setIsAdminOrTrainer] = useState(false);
+  const { register, handleSubmit, reset, setValue } = useForm();
   
   // Fetch muscle groups
   useEffect(() => {
@@ -65,6 +72,21 @@ const ExerciseList = () => {
     
     fetchMuscleGroups();
   }, [toast]);
+
+  // Check user role
+  useEffect(() => {
+    const check = async () => {
+      try {
+        const profile = await userService.getCurrentUserProfile();
+        if (profile && (profile.roles?.includes('ADMIN') || profile.roles?.includes('TRAINER'))) {
+          setIsAdminOrTrainer(true);
+        }
+      } catch (e) {
+        // ignore
+      }
+    };
+    check();
+  }, []);
   
   // Fetch exercises
   useEffect(() => {
@@ -174,6 +196,12 @@ const ExerciseList = () => {
           <h1 className="text-2xl font-bold">Exercise Library</h1>
           <p className="text-muted-foreground">Browse and search available exercises</p>
         </div>
+        {isAdminOrTrainer && (
+          <div className="flex gap-2">
+            <Button onClick={() => setShowBulkModal(true)} variant="outline">Bulk Upload</Button>
+            <Button onClick={() => setShowCreateModal(true)}>Add Exercise</Button>
+          </div>
+        )}
       </div>
       
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
@@ -269,6 +297,97 @@ const ExerciseList = () => {
               ? "Try a different search term"
               : "Try selecting a different muscle group"}
           </p>
+        </div>
+      )}
+
+      {/* Create Exercise Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-lb-card p-6 rounded-lg w-full max-w-lg">
+            <h3 className="text-lg font-semibold mb-4">Create Exercise</h3>
+            <form onSubmit={handleSubmit(async (vals) => {
+              try {
+                setLoading(true);
+                await exerciseTemplatesApi.create(vals);
+                toast({ title: 'Created', description: 'Exercise created successfully' });
+                setShowCreateModal(false);
+                reset();
+                // Refresh list
+                const resp = await exerciseTemplatesApi.getAll();
+                if (resp?.data) { setExercises(resp.data); setFilteredExercises(resp.data); }
+              } catch (e) {
+                console.error('Create failed', e);
+                toast({ title: 'Error', description: 'Failed to create exercise', variant: 'destructive' });
+              } finally { setLoading(false); }
+            })}>
+              <div className="space-y-2">
+                <Input placeholder="Name" {...register('name', { required: true })} />
+                <div>
+                  <Select onValueChange={(v) => { setValue('primaryMuscleGroupId', v); }}>
+                    <SelectTrigger className="w-full bg-lb-darker">
+                      <SelectValue placeholder="Select primary muscle" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {muscleGroups.map(g => (
+                        <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Select onValueChange={(v) => { setValue('secondaryMuscleGroupId', v === '__none' ? '' : v); }}>
+                    <SelectTrigger className="w-full bg-lb-darker">
+                      <SelectValue placeholder="Select secondary muscle (optional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none">None</SelectItem>
+                      {muscleGroups.map(g => (
+                        <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Input placeholder="Description" {...register('description')} />
+                <div className="flex items-center gap-2">
+                  <input type="checkbox" id="requiresWeight" {...register('requiresWeight')} />
+                  <label htmlFor="requiresWeight" className="text-sm">Requires Weight</label>
+                </div>
+                <div className="flex gap-2">
+                  <Button type="submit">Create</Button>
+                  <Button type="button" variant="outline" onClick={() => setShowCreateModal(false)}>Cancel</Button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Upload Modal */}
+      {showBulkModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-lb-card p-6 rounded-lg w-full max-w-2xl">
+            <h3 className="text-lg font-semibold mb-4">Bulk Upload Exercises (JSON array)</h3>
+            <p className="text-sm text-gray-400 mb-2">Provide a JSON array of ExerciseTemplateRequest objects. Example: {`[{"name":"Bench","primaryMuscleGroupId":"<id>","description":"...","requiresWeight":true}]`}</p>
+            <textarea id="bulk" className="w-full h-48 mb-4 bg-lb-darker p-2 text-white" />
+            <div className="flex gap-2">
+              <Button onClick={async () => {
+                try {
+                  const raw = (document.getElementById('bulk') as HTMLTextAreaElement).value;
+                  const parsed = JSON.parse(raw);
+                  setLoading(true);
+                  await exerciseTemplatesApi.bulkCreate(parsed);
+                  toast({ title: 'Bulk upload', description: 'Exercises uploaded' });
+                  setShowBulkModal(false);
+                  const resp = await exerciseTemplatesApi.getAll();
+                  if (resp?.data) { setExercises(resp.data); setFilteredExercises(resp.data); }
+                } catch (e) {
+                  console.error('Bulk upload failed', e);
+                  toast({ title: 'Error', description: 'Bulk upload failed', variant: 'destructive' });
+                } finally { setLoading(false); }
+              }}>Upload</Button>
+              <Button variant="outline" onClick={() => setShowBulkModal(false)}>Cancel</Button>
+            </div>
+          </div>
         </div>
       )}
     </div>

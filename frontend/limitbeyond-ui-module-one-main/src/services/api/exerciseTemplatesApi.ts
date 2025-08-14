@@ -31,6 +31,10 @@ export const exerciseTemplatesApi = {
     return axiosInstance.delete(`/exercise-templates/${id}`);
   },
 
+  bulkCreate: (exerciseTemplates: any[]) => {
+    return axiosInstance.post('/exercise-templates/bulk', exerciseTemplates);
+  },
+
   getByMuscleGroup: (muscleGroupId: string) => {
     return axiosInstance.get(`/exercise-templates/by-muscle-group/${muscleGroupId}`);
   }

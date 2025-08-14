@@ -12,7 +12,6 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -59,32 +58,36 @@ public class WorkoutController {
         User memberToQuery = me;
 
         if (memberId != null && !memberId.isEmpty()) {
-            // Only allow admins to view any member; trainers can view assigned members; members cannot view others
-            if (me.getRoles().contains(com.limitbeyond.model.Role.ADMIN)) {
-                memberToQuery = userRepository.findById(memberId).orElseThrow(() -> new RuntimeException("Member not found"));
-            } else if (me.getRoles().contains(com.limitbeyond.model.Role.TRAINER)) {
-                if (!me.getAssignedMembers().contains(memberId)) {
-                    return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-                }
-                memberToQuery = userRepository.findById(memberId).orElseThrow(() -> new RuntimeException("Member not found"));
+            // Allow ADMIN and TRAINER to query other members' workouts; regular MEMBERs
+            // cannot
+            if (me.getRoles().contains(com.limitbeyond.model.Role.ADMIN)
+                    || me.getRoles().contains(com.limitbeyond.model.Role.TRAINER)) {
+                memberToQuery = userRepository.findById(memberId)
+                        .orElseThrow(() -> new RuntimeException("Member not found"));
             } else {
-                // Members cannot request other members' workouts; ignore memberId and fall back to self
+                // Members cannot request other members' workouts; ignore memberId and fall back
+                // to self
                 memberToQuery = me;
             }
         }
 
         List<Workout> workouts = workoutService.findByMember(memberToQuery);
+        if (workouts == null) {
+            workouts = new ArrayList<>();
+        }
         // Debug logging to help trace memberId lookups and returned counts
         try {
             String callerId = me != null ? me.getId() : "unknown";
             String resolvedMemberId = memberToQuery != null ? memberToQuery.getId() : "null";
             int found = workouts != null ? workouts.size() : 0;
-            logger.info("getMyWorkouts called by={} requestedMemberId={} resolvedMemberId={} returnedCount={}", callerId, memberId, resolvedMemberId, found);
+            logger.info("getMyWorkouts called by={} requestedMemberId={} resolvedMemberId={} returnedCount={}",
+                    callerId, memberId, resolvedMemberId, found);
         } catch (Exception e) {
             logger.warn("Failed to log getMyWorkouts debug info", e);
         }
         List<WorkoutResponse> responses = new ArrayList<>();
-        for (Workout w : workouts) responses.add(WorkoutResponse.fromWorkout(w));
+        for (Workout w : workouts)
+            responses.add(WorkoutResponse.fromWorkout(w));
         return ResponseEntity.ok(responses);
     }
 
@@ -92,7 +95,8 @@ public class WorkoutController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<WorkoutResponse> getWorkoutById(@PathVariable String id) {
         Workout workout = workoutService.findById(id);
-        // Ensure current user is owner or trainer/admin could be allowed in future. For now, just return.
+        // Ensure current user is owner or trainer/admin could be allowed in future. For
+        // now, just return.
         return ResponseEntity.ok(WorkoutResponse.fromWorkout(workout));
     }
 
@@ -106,7 +110,8 @@ public class WorkoutController {
         LocalDateTime end = LocalDateTime.of(endDate, LocalTime.MAX);
         List<Workout> workouts = workoutService.findByMemberAndDateRange(me, start, end);
         List<WorkoutResponse> responses = new ArrayList<>();
-        for (Workout w : workouts) responses.add(WorkoutResponse.fromWorkout(w));
+        for (Workout w : workouts)
+            responses.add(WorkoutResponse.fromWorkout(w));
         return ResponseEntity.ok(responses);
     }
 
@@ -115,18 +120,22 @@ public class WorkoutController {
     public ResponseEntity<List<WorkoutResponse>> getWorkoutsByMuscleGroup(@PathVariable String muscleGroupId) {
         User me = getCurrentUserOrThrow();
         MuscleGroup mg = muscleGroupService.findById(muscleGroupId);
-        // Direct repository call for this filter since service interface does not expose it
-        // or we could extend the service; using repository through service is preferable,
+        // Direct repository call for this filter since service interface does not
+        // expose it
+        // or we could extend the service; using repository through service is
+        // preferable,
         // but we keep it simple here by filtering from all for the user.
         List<Workout> all = workoutService.findByMember(me);
         List<Workout> filtered = new ArrayList<>();
         for (Workout w : all) {
-            if (w.getTargetMuscleGroups() != null && w.getTargetMuscleGroups().stream().anyMatch(g -> g.getId().equals(mg.getId()))) {
+            if (w.getTargetMuscleGroups() != null
+                    && w.getTargetMuscleGroups().stream().anyMatch(g -> g.getId().equals(mg.getId()))) {
                 filtered.add(w);
             }
         }
         List<WorkoutResponse> responses = new ArrayList<>();
-        for (Workout w : filtered) responses.add(WorkoutResponse.fromWorkout(w));
+        for (Workout w : filtered)
+            responses.add(WorkoutResponse.fromWorkout(w));
         return ResponseEntity.ok(responses);
     }
 
@@ -145,7 +154,7 @@ public class WorkoutController {
     @PutMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<WorkoutResponse> updateWorkout(@PathVariable String id,
-                                                         @Valid @RequestBody WorkoutRequest request) {
+            @Valid @RequestBody WorkoutRequest request) {
         Workout updated = workoutService.update(id, request);
         return ResponseEntity.ok(WorkoutResponse.fromWorkout(updated));
     }
@@ -160,8 +169,7 @@ public class WorkoutController {
     @PostMapping("/{id}/copy")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<WorkoutResponse> copyWorkout(@PathVariable String id,
-                                                       @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-                                                       LocalDate newDate) {
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate newDate) {
         LocalDateTime newScheduled = LocalDateTime.of(newDate, LocalTime.MIDNIGHT);
         Workout copied = workoutService.copyWorkout(id, newScheduled);
         return ResponseEntity.ok(WorkoutResponse.fromWorkout(copied));
@@ -171,21 +179,39 @@ public class WorkoutController {
     public static class WorkoutExerciseRequest {
         private String exerciseTemplateId;
         private List<SetDto> sets;
-        public static class SetDto { public Integer reps; public Double weight; }
-        public String getExerciseTemplateId() { return exerciseTemplateId; }
-        public void setExerciseTemplateId(String exerciseTemplateId) { this.exerciseTemplateId = exerciseTemplateId; }
-        public List<SetDto> getSets() { return sets; }
-        public void setSets(List<SetDto> sets) { this.sets = sets; }
+
+        public static class SetDto {
+            public Integer reps;
+            public Double weight;
+        }
+
+        public String getExerciseTemplateId() {
+            return exerciseTemplateId;
+        }
+
+        public void setExerciseTemplateId(String exerciseTemplateId) {
+            this.exerciseTemplateId = exerciseTemplateId;
+        }
+
+        public List<SetDto> getSets() {
+            return sets;
+        }
+
+        public void setSets(List<SetDto> sets) {
+            this.sets = sets;
+        }
     }
 
     @PostMapping("/{id}/exercises")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<WorkoutResponse> addExercise(@PathVariable String id,
-                                                       @RequestBody WorkoutExerciseRequest body) {
-        // The domain currently models each WorkoutSet as a single set with one exercise.
+            @RequestBody WorkoutExerciseRequest body) {
+        // The domain currently models each WorkoutSet as a single set with one
+        // exercise.
         // To align, we will append multiple WorkoutSet entries for each provided set.
         Workout workout = workoutService.findById(id);
-        // Reuse service update path by constructing an update request merging existing sets + new ones
+        // Reuse service update path by constructing an update request merging existing
+        // sets + new ones
         WorkoutRequest req = new WorkoutRequest();
         req.setName(workout.getName());
         req.setDescription(workout.getDescription());
@@ -215,7 +241,8 @@ public class WorkoutController {
         // Preserve target muscle groups
         if (workout.getTargetMuscleGroups() != null) {
             List<String> mgIds = new ArrayList<>();
-            for (var mg : workout.getTargetMuscleGroups()) mgIds.add(mg.getId());
+            for (var mg : workout.getTargetMuscleGroups())
+                mgIds.add(mg.getId());
             req.setTargetMuscleGroupIds(mgIds);
         }
         Workout updated = workoutService.update(id, req);
@@ -225,8 +252,8 @@ public class WorkoutController {
     @PutMapping("/{workoutId}/exercises/{exerciseId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<WorkoutResponse> updateExercise(@PathVariable String workoutId,
-                                                          @PathVariable String exerciseId,
-                                                          @RequestBody WorkoutExerciseRequest body) {
+            @PathVariable String exerciseId,
+            @RequestBody WorkoutExerciseRequest body) {
         // Replace all sets for the given exercise with the new list
         Workout workout = workoutService.findById(workoutId);
         List<WorkoutRequest.WorkoutSetRequest> rebuilt = new ArrayList<>();
@@ -261,7 +288,8 @@ public class WorkoutController {
         req.setSets(rebuilt);
         if (workout.getTargetMuscleGroups() != null) {
             List<String> mgIds = new ArrayList<>();
-            for (var mg : workout.getTargetMuscleGroups()) mgIds.add(mg.getId());
+            for (var mg : workout.getTargetMuscleGroups())
+                mgIds.add(mg.getId());
             req.setTargetMuscleGroupIds(mgIds);
         }
         Workout updated = workoutService.update(workoutId, req);
@@ -271,7 +299,7 @@ public class WorkoutController {
     @DeleteMapping("/{workoutId}/exercises/{exerciseId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<WorkoutResponse> deleteExercise(@PathVariable String workoutId,
-                                                          @PathVariable String exerciseId) {
+            @PathVariable String exerciseId) {
         // Remove all sets with this exercise id
         Workout workout = workoutService.findById(workoutId);
         List<WorkoutRequest.WorkoutSetRequest> rebuilt = new ArrayList<>();
@@ -295,7 +323,8 @@ public class WorkoutController {
         req.setSets(rebuilt);
         if (workout.getTargetMuscleGroups() != null) {
             List<String> mgIds = new ArrayList<>();
-            for (var mg : workout.getTargetMuscleGroups()) mgIds.add(mg.getId());
+            for (var mg : workout.getTargetMuscleGroups())
+                mgIds.add(mg.getId());
             req.setTargetMuscleGroupIds(mgIds);
         }
         Workout updated = workoutService.update(workoutId, req);
@@ -322,4 +351,4 @@ public class WorkoutController {
         Workout updated = workoutService.completeWorkout(workoutId);
         return ResponseEntity.ok(WorkoutResponse.fromWorkout(updated));
     }
-} 
+}

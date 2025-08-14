@@ -69,16 +69,17 @@ export const WorkoutList = () => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [workoutToDelete, setWorkoutToDelete] = useState<Workout | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
-    from: undefined,
-    to: undefined,
-  });
-
+  const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>(
+    { from: undefined, to: undefined }
+  );
   // Graph state
   const [selectedExercise, setSelectedExercise] = useState<string>('all');
   const [exercises, setExercises] = useState<Array<{ id: string; name: string }>>([]);
   const [volumeData, setVolumeData] = useState<VolumeDataPoint[]>([]);
   const [graphLoading, setGraphLoading] = useState(false);
+  const [members, setMembers] = useState<Array<{ id: string; firstName: string; lastName: string; username: string }>>([]);
+  const [selectedMemberFilter, setSelectedMemberFilter] = useState<string | 'all'>('all');
+  const [isAdminOrTrainer, setIsAdminOrTrainer] = useState(false);
 
   // Fetch workouts and exercises
   useEffect(() => {
@@ -86,11 +87,34 @@ export const WorkoutList = () => {
       try {
         setLoading(true);
 
-  // Fetch workouts (ask backend for a specific member if requested)
-  const queryParams = new URLSearchParams(location.search);
-  const requestedMemberId = queryParams.get('memberId');
-  const workoutsResponse = await workoutApi.getAll(requestedMemberId || undefined);
-  const allWorkouts = workoutsResponse?.data || [];
+        // Check user role and load members list for admin/trainer
+        try {
+          const profile = await userService.getCurrentUserProfile();
+          console.debug('WorkoutList: profile', profile);
+          if (profile && (profile.roles?.includes('ADMIN') || profile.roles?.includes('TRAINER'))) {
+            setIsAdminOrTrainer(true);
+            const membersResp = await userService.getAllMembers();
+            console.debug('WorkoutList: membersResp', membersResp);
+            if (membersResp) setMembers(membersResp);
+          }
+        } catch (e: any) {
+          console.error('WorkoutList: failed to load profile or members', e?.message || e);
+          // show a non-blocking toast so admin notices
+          toast({ title: 'Warning', description: 'Unable to load members. Check your authentication.', variant: 'destructive' });
+        }
+
+        // Determine requested member id from selected filter or url
+        const queryParams = new URLSearchParams(location.search);
+        const requestedMemberId = queryParams.get('memberId') || (selectedMemberFilter && selectedMemberFilter !== 'all' ? selectedMemberFilter : undefined);
+        let workoutsResponse;
+        try {
+          workoutsResponse = await workoutApi.getAll(requestedMemberId || undefined);
+          console.debug('WorkoutList: workoutsResponse', workoutsResponse);
+        } catch (wx) {
+          console.error('WorkoutList: workouts API error', wx);
+          workoutsResponse = { data: [] };
+        }
+        const allWorkouts = workoutsResponse?.data || [];
 
   // Respect role-based visibility:
         // - ADMIN: see all workouts
@@ -100,21 +124,14 @@ export const WorkoutList = () => {
           const profile = await userService.getCurrentUserProfile();
           // requestedMemberId is already used server-side; here enforce visibility
           if (profile.roles?.includes('ADMIN')) {
+            console.debug('User is ADMIN, showing all workouts', allWorkouts.length);
             setWorkouts(allWorkouts);
           } else if (profile.roles?.includes('TRAINER')) {
             const assigned = profile.assignedMembers || [];
-            if (requestedMemberId && !assigned.includes(requestedMemberId)) {
-              toast({ title: 'Access denied', description: 'You are not assigned to this member.', variant: 'destructive' });
-              setWorkouts(allWorkouts.filter(w => w.member && assigned.includes(w.member.id)));
-            } else {
-              setWorkouts(allWorkouts.filter(w => w.member && assigned.includes(w.member.id)));
-            }
-          } else if (profile.roles?.includes('TRAINER')) {
-            const assigned = profile.assignedMembers || [];
+            console.debug('User is TRAINER, assignedMembers=', assigned);
             // If trainer requested a specific member, ensure it's assigned to them
             if (requestedMemberId) {
               if (!assigned.includes(requestedMemberId)) {
-                // Not allowed — redirect or show message
                 toast({ title: 'Access denied', description: 'You are not assigned to this member.', variant: 'destructive' });
                 // fallback to assigned members' workouts
                 setWorkouts(allWorkouts.filter(w => w.member && assigned.includes(w.member.id)));
@@ -155,7 +172,7 @@ export const WorkoutList = () => {
     };
 
     fetchData();
-  }, [toast]);
+  }, [toast, selectedMemberFilter, location.search]);
 
   // Filter workouts based on search and date range
   useEffect(() => {
@@ -424,9 +441,41 @@ export const WorkoutList = () => {
             className="pl-10 bg-lb-darker border-white/20 text-white placeholder:text-gray-500 w-full"
           />
         </div>
+        {isAdminOrTrainer && (
+          <div className="w-full sm:w-auto flex items-center gap-2">
+            <Select value={selectedMemberFilter} onValueChange={(v) => setSelectedMemberFilter(v as any)}>
+              <SelectTrigger className="w-full sm:w-[220px] bg-lb-darker border-white/20 text-white">
+                <SelectValue placeholder="Filter by member" />
+              </SelectTrigger>
+              <SelectContent className="bg-lb-card border-white/10">
+                <SelectItem value="all" className="text-white hover:bg-lb-darker">All Members</SelectItem>
+                {members.map(m => (
+                  <SelectItem key={m.id} value={m.id} className="text-white hover:bg-lb-darker">
+                    {m.firstName} {m.lastName} ({m.username})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button variant="outline" size="sm" onClick={async () => {
+              try {
+                const resp = await userService.getAllMembers();
+                console.debug('Manual refresh members', resp);
+                if (resp) setMembers(resp);
+                toast({ title: 'Refreshed', description: 'Members list refreshed' });
+              } catch (e) {
+                console.error('Failed to refresh members', e);
+                toast({ title: 'Error', description: 'Failed to refresh members', variant: 'destructive' });
+              }
+            }}>Refresh</Button>
+            {members.length === 0 && <span className="text-sm text-gray-400 ml-2">No members loaded</span>}
+          </div>
+        )}
         <DateRangePicker
-          dateRange={dateRange}
-          onDateRangeChange={setDateRange}
+          onChange={(dr) => {
+            const from = dr?.from;
+            const to = dr?.to;
+            setDateRange({ from, to });
+          }}
         />
       </div>
 

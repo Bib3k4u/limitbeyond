@@ -14,10 +14,11 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.ArrayList;
 
 @RestController
 @RequestMapping("/api/exercise-templates")
-//@CrossOrigin(origins = "*", maxAge = 3600)
+// @CrossOrigin(origins = "*", maxAge = 3600)
 public class ExerciseTemplateController {
 
     @Autowired
@@ -123,7 +124,7 @@ public class ExerciseTemplateController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','TRAINER')")
     public ResponseEntity<ExerciseTemplateResponse> createExerciseTemplate(
             @Valid @RequestBody ExerciseTemplateRequest request) {
         ExerciseTemplate newExerciseTemplate = exerciseTemplateService.createExerciseTemplate(request);
@@ -131,17 +132,35 @@ public class ExerciseTemplateController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','TRAINER')")
     public ResponseEntity<ExerciseTemplateResponse> updateExerciseTemplate(@PathVariable String id,
-                                                                           @Valid @RequestBody ExerciseTemplateRequest request) {
+            @Valid @RequestBody ExerciseTemplateRequest request) {
         ExerciseTemplate updatedExerciseTemplate = exerciseTemplateService.update(id, request);
         return ResponseEntity.ok(new ExerciseTemplateResponse(updatedExerciseTemplate));
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','TRAINER')")
     public ResponseEntity<?> deleteExerciseTemplate(@PathVariable String id) {
         exerciseTemplateService.delete(id);
         return ResponseEntity.ok().build();
+    }
+
+    // Bulk create endpoint for admins and trainers
+    @PostMapping("/bulk")
+    @PreAuthorize("hasAnyRole('ADMIN','TRAINER')")
+    public ResponseEntity<List<ExerciseTemplateResponse>> bulkCreateExerciseTemplates(
+            @Valid @RequestBody List<ExerciseTemplateRequest> requests) {
+        List<ExerciseTemplateResponse> responses = new ArrayList<>();
+        for (ExerciseTemplateRequest req : requests) {
+            try {
+                ExerciseTemplate created = exerciseTemplateService.createExerciseTemplate(req);
+                responses.add(new ExerciseTemplateResponse(created));
+            } catch (Exception e) {
+                // Skip duplicates or invalid entries but continue processing
+                System.err.println("Failed to create exercise template: " + e.getMessage());
+            }
+        }
+        return ResponseEntity.ok(responses);
     }
 }
