@@ -12,6 +12,7 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -22,6 +23,8 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @RestController
 @RequestMapping("/api/workouts")
@@ -36,6 +39,8 @@ public class WorkoutController {
     @Autowired
     private MuscleGroupService muscleGroupService;
 
+    private static final Logger logger = LoggerFactory.getLogger(WorkoutController.class);
+
     private User getCurrentUserOrThrow() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()) {
@@ -48,9 +53,36 @@ public class WorkoutController {
 
     @GetMapping
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<List<WorkoutResponse>> getMyWorkouts() {
+    public ResponseEntity<List<WorkoutResponse>> getMyWorkouts(@RequestParam(required = false) String memberId) {
         User me = getCurrentUserOrThrow();
-        List<Workout> workouts = workoutService.findByMember(me);
+
+        User memberToQuery = me;
+
+        if (memberId != null && !memberId.isEmpty()) {
+            // Only allow admins to view any member; trainers can view assigned members; members cannot view others
+            if (me.getRoles().contains(com.limitbeyond.model.Role.ADMIN)) {
+                memberToQuery = userRepository.findById(memberId).orElseThrow(() -> new RuntimeException("Member not found"));
+            } else if (me.getRoles().contains(com.limitbeyond.model.Role.TRAINER)) {
+                if (!me.getAssignedMembers().contains(memberId)) {
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+                }
+                memberToQuery = userRepository.findById(memberId).orElseThrow(() -> new RuntimeException("Member not found"));
+            } else {
+                // Members cannot request other members' workouts; ignore memberId and fall back to self
+                memberToQuery = me;
+            }
+        }
+
+        List<Workout> workouts = workoutService.findByMember(memberToQuery);
+        // Debug logging to help trace memberId lookups and returned counts
+        try {
+            String callerId = me != null ? me.getId() : "unknown";
+            String resolvedMemberId = memberToQuery != null ? memberToQuery.getId() : "null";
+            int found = workouts != null ? workouts.size() : 0;
+            logger.info("getMyWorkouts called by={} requestedMemberId={} resolvedMemberId={} returnedCount={}", callerId, memberId, resolvedMemberId, found);
+        } catch (Exception e) {
+            logger.warn("Failed to log getMyWorkouts debug info", e);
+        }
         List<WorkoutResponse> responses = new ArrayList<>();
         for (Workout w : workouts) responses.add(WorkoutResponse.fromWorkout(w));
         return ResponseEntity.ok(responses);

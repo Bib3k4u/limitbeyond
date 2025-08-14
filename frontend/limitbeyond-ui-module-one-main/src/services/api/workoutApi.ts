@@ -2,8 +2,10 @@ import { axiosInstance } from './axiosInstance';
 import { Workout, WorkoutRequest } from '@/types/workout';
 
 export const workoutApi = {
-  getAll: () => {
-    return axiosInstance.get<Workout[]>('/workouts');
+  getAll: (memberId?: string) => {
+    // If memberId provided, pass as query param so backend can return that member's workouts
+    const config = memberId ? { params: { memberId } } : undefined;
+    return axiosInstance.get<Workout[]>('/workouts', config);
   },
 
   getById: (id: string) => {

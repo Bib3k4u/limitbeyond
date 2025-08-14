@@ -79,6 +79,7 @@ const WorkoutForm = () => {
   const [dataError, setDataError] = useState<string | null>(null);
   const [selectedExercises, setSelectedExercises] = useState<SelectedExercise[]>([]);
   const [showExerciseSelector, setShowExerciseSelector] = useState(false);
+  const [previousVolumes, setPreviousVolumes] = useState<Record<string, number>>({});
 
   const form = useForm<WorkoutFormData>({
     defaultValues: {
@@ -131,8 +132,9 @@ const WorkoutForm = () => {
           // Load members if user is trainer/admin
           if (userProfile.roles.includes('TRAINER') || userProfile.roles.includes('ADMIN')) {
             const membersResponse = await userService.getAllMembers();
-            if (membersResponse?.data) {
-              setMembers(membersResponse.data);
+            // userService.getAllMembers() returns the data array directly (not an axios response object)
+            if (membersResponse) {
+              setMembers(membersResponse);
             }
           }
         }
@@ -180,6 +182,60 @@ const WorkoutForm = () => {
 
     loadData();
   }, [id, form]);
+
+  // Watch the selected member id from the form
+  const memberIdValue = form.watch('memberId');
+
+  // Compute current total volume for an exercise
+  const computeCurrentVolume = (exercise: SelectedExercise) => {
+    return exercise.sets.reduce((acc, s) => acc + ((s.weight || 0) * (s.reps || 0)), 0);
+  };
+
+  // Fetch previous workouts for the selected member (or current user) and compute previous volume per exercise
+  useEffect(() => {
+    const fetchPreviousVolumes = async () => {
+      try {
+        const memberToQuery = memberIdValue || currentUser?.id;
+        if (!memberToQuery) {
+          setPreviousVolumes({});
+          return;
+        }
+
+        const resp = await workoutApi.getAll(memberToQuery);
+        const workouts = resp?.data || [];
+
+        // Sort workouts by scheduledDate (descending) to find the most recent
+        workouts.sort((a: any, b: any) => {
+          const ad = a.scheduledDate || a.date || null;
+          const bd = b.scheduledDate || b.date || null;
+          return new Date(bd || 0).getTime() - new Date(ad || 0).getTime();
+        });
+
+        const map: Record<string, number> = {};
+
+        // For each selected exercise, find the most recent workout that includes it
+        for (const se of selectedExercises) {
+          const found = workouts.find((w: any) => (w.sets || []).some((s: any) => s.exercise?.id === se.exerciseId));
+          if (found) {
+            const total = (found.sets || [])
+              .filter((s: any) => s.exercise?.id === se.exerciseId)
+              .reduce((acc: number, s: any) => acc + ((s.weight || 0) * (s.reps || 0)), 0);
+            map[se.exerciseId] = total;
+          } else {
+            map[se.exerciseId] = 0;
+          }
+        }
+
+        setPreviousVolumes(map);
+      } catch (e) {
+        console.error('Failed to fetch previous workouts for volume calculation', e);
+        setPreviousVolumes({});
+      }
+    };
+
+    fetchPreviousVolumes();
+    // Re-run when member changes or selected exercises change
+  }, [memberIdValue, currentUser, selectedExercises.map(se => se.exerciseId).join(',')]);
 
   const handleExerciseSelect = (exercise: ExerciseTemplate) => {
     // Check if exercise is already selected
@@ -466,7 +522,17 @@ const WorkoutForm = () => {
               <Card key={exercise.exerciseId} className="p-4 bg-lb-card border-white/10">
                 <div className="flex justify-between items-start mb-4">
                   <div>
-                    <h3 className="font-semibold text-lg text-white">{exercise.exerciseName}</h3>
+                    <div className="flex items-center gap-3">
+                      <h3 className="font-semibold text-lg text-white">{exercise.exerciseName}</h3>
+                      {/* Previous volume tag */}
+                      <Badge variant="secondary" className="text-sm bg-white/5 text-gray-200">
+                        Prev: {Number((previousVolumes[exercise.exerciseId] || 0)).toFixed(0)} kg
+                      </Badge>
+                      {/* Current computed volume tag */}
+                      <Badge variant="secondary" className="text-sm bg-white/5 text-gray-200">
+                        Current: {Number(computeCurrentVolume(exercise)).toFixed(0)} kg
+                      </Badge>
+                    </div>
                     <p className="text-sm text-gray-400">
                       {exercises.find(e => e.id === exercise.exerciseId)?.description || 'No description available'}
                     </p>

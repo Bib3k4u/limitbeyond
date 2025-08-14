@@ -357,6 +357,9 @@ const UserManagement = () => {
                   <MessageSquare className="h-4 w-4 mr-2" />
                   View Feedback
                 </Button>
+                <Button onClick={() => navigate(`/dashboard/workouts?memberId=${selectedUser.id}`)}>
+                  View Workouts
+                </Button>
                 {selectedUser.roles.includes('MEMBER') && (
                   <Button onClick={() => navigate(`/dashboard/diet-chats?userId=${selectedUser.id}`)}>
                     View Diet Chats

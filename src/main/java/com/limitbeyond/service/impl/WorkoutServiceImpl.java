@@ -15,6 +15,8 @@ import com.limitbeyond.service.MuscleGroupService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -38,6 +40,8 @@ public class WorkoutServiceImpl implements WorkoutService {
 
     @Autowired
     private MuscleGroupService muscleGroupService;
+
+    private static final Logger logger = LoggerFactory.getLogger(WorkoutServiceImpl.class);
 
     @Override
     public Workout createWorkout(WorkoutRequest request) {
@@ -106,7 +110,15 @@ public class WorkoutServiceImpl implements WorkoutService {
 
     @Override
     public List<Workout> findByMember(User member) {
-        return workoutRepository.findByMember(member);
+        List<Workout> results = workoutRepository.findByMember(member);
+        try {
+            String mid = member != null ? member.getId() : "null";
+            int found = results != null ? results.size() : 0;
+            logger.info("WorkoutServiceImpl.findByMember memberId={} found={}", mid, found);
+        } catch (Exception e) {
+            logger.warn("Failed to log findByMember debug info", e);
+        }
+        return results;
     }
 
     @Override

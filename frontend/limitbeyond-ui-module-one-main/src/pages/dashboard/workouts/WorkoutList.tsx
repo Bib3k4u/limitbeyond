@@ -8,6 +8,8 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { workoutApi } from '@/services/api/workoutApi';
 import { exerciseTemplatesApi } from '@/services/api/exerciseTemplatesApi';
+import userService from '@/services/api/userService';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Workout } from '@/types/workout';
 import { DateRangePicker } from '@/components/DateRangePicker';
 import {
@@ -58,6 +60,8 @@ interface VolumeDataPoint {
 
 export const WorkoutList = () => {
   const { toast } = useToast();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -82,10 +86,55 @@ export const WorkoutList = () => {
       try {
         setLoading(true);
 
-        // Fetch workouts
-        const workoutsResponse = await workoutApi.getAll();
-        if (workoutsResponse?.data) {
-          setWorkouts(workoutsResponse.data);
+  // Fetch workouts (ask backend for a specific member if requested)
+  const queryParams = new URLSearchParams(location.search);
+  const requestedMemberId = queryParams.get('memberId');
+  const workoutsResponse = await workoutApi.getAll(requestedMemberId || undefined);
+  const allWorkouts = workoutsResponse?.data || [];
+
+  // Respect role-based visibility:
+        // - ADMIN: see all workouts
+        // - TRAINER: see workouts for assigned members only
+        // - MEMBER: see only their own workouts
+        try {
+          const profile = await userService.getCurrentUserProfile();
+          // requestedMemberId is already used server-side; here enforce visibility
+          if (profile.roles?.includes('ADMIN')) {
+            setWorkouts(allWorkouts);
+          } else if (profile.roles?.includes('TRAINER')) {
+            const assigned = profile.assignedMembers || [];
+            if (requestedMemberId && !assigned.includes(requestedMemberId)) {
+              toast({ title: 'Access denied', description: 'You are not assigned to this member.', variant: 'destructive' });
+              setWorkouts(allWorkouts.filter(w => w.member && assigned.includes(w.member.id)));
+            } else {
+              setWorkouts(allWorkouts.filter(w => w.member && assigned.includes(w.member.id)));
+            }
+          } else if (profile.roles?.includes('TRAINER')) {
+            const assigned = profile.assignedMembers || [];
+            // If trainer requested a specific member, ensure it's assigned to them
+            if (requestedMemberId) {
+              if (!assigned.includes(requestedMemberId)) {
+                // Not allowed — redirect or show message
+                toast({ title: 'Access denied', description: 'You are not assigned to this member.', variant: 'destructive' });
+                // fallback to assigned members' workouts
+                setWorkouts(allWorkouts.filter(w => w.member && assigned.includes(w.member.id)));
+              } else {
+                setWorkouts(allWorkouts.filter(w => w.member && w.member.id === requestedMemberId));
+              }
+            } else {
+              setWorkouts(allWorkouts.filter(w => w.member && assigned.includes(w.member.id)));
+            }
+          } else if (profile.roles?.includes('MEMBER')) {
+            // Members can only view their own workouts; ignore requestedMemberId
+            setWorkouts(allWorkouts.filter(w => w.member && w.member.id === profile.id));
+          } else {
+            // default fallback
+            setWorkouts(allWorkouts);
+          }
+        } catch (err) {
+          // If profile fetch fails, fall back to showing all workouts (safer) and log
+          console.error('Failed to fetch profile for role-based filtering:', err);
+          setWorkouts(allWorkouts);
         }
 
         // Fetch exercises for filter
