@@ -40,6 +40,7 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js';
+import { Filler } from 'chart.js';
 
 // Register ChartJS components
 ChartJS.register(
@@ -50,6 +51,8 @@ ChartJS.register(
   Title,
   Tooltip,
   Legend
+  ,
+  Filler
 );
 
 interface VolumeDataPoint {

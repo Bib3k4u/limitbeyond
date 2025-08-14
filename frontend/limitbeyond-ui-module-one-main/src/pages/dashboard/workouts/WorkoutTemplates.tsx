@@ -67,11 +67,60 @@ const WorkoutTemplates = () => {
       const workoutSets = [];
       const missingExercises = [];
       
+      // Helper: normalize names (lowercase, trim, remove punctuation)
+      const normalize = (s: any) => (s || '').toString().trim().toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ');
+
+      // Small Levenshtein distance implementation for fuzzy matching
+      const levenshtein = (a: string, b: string) => {
+        const al = a.length, bl = b.length;
+        if (al === 0) return bl;
+        if (bl === 0) return al;
+        const matrix = Array.from({ length: al + 1 }, () => new Array(bl + 1).fill(0));
+        for (let i = 0; i <= al; i++) matrix[i][0] = i;
+        for (let j = 0; j <= bl; j++) matrix[0][j] = j;
+        for (let i = 1; i <= al; i++) {
+          for (let j = 1; j <= bl; j++) {
+            const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+            matrix[i][j] = Math.min(
+              matrix[i - 1][j] + 1,
+              matrix[i][j - 1] + 1,
+              matrix[i - 1][j - 1] + cost
+            );
+          }
+        }
+        return matrix[al][bl];
+      };
+
       for (const templateExercise of day.exercises) {
-        // Find exercise by name (case-insensitive)
-        const foundExercise = exercises.find(ex => 
-          ex.name.toLowerCase() === templateExercise.exerciseName.toLowerCase()
-        );
+        const rawTarget = templateExercise.exerciseName || '';
+        const target = normalize(rawTarget);
+
+        // 1) exact normalized match
+        let foundExercise = exercises.find(ex => normalize(ex.name) === target);
+
+        // 2) substring match (exercise name contains target or vice versa)
+        if (!foundExercise) {
+          foundExercise = exercises.find(ex => normalize(ex.name).includes(target) || target.includes(normalize(ex.name)));
+        }
+
+        // 3) fuzzy match via Levenshtein distance with threshold (25% of length or min 2)
+        if (!foundExercise) {
+          let best: any = null;
+          let bestDist = Infinity;
+          for (const ex of exercises) {
+            const exName = normalize(ex.name);
+            const dist = levenshtein(exName, target);
+            if (dist < bestDist) {
+              bestDist = dist;
+              best = ex;
+            }
+          }
+          const maxAllowed = Math.max(2, Math.floor(Math.max(target.length, 1) * 0.25));
+          if (best && bestDist <= maxAllowed) {
+            console.debug(`Fuzzy matched '${rawTarget}' -> '${best.name}' (dist=${bestDist})`);
+            foundExercise = best;
+          }
+        }
 
         if (!foundExercise) {
           console.warn(`Exercise not found: ${templateExercise.exerciseName}`);
