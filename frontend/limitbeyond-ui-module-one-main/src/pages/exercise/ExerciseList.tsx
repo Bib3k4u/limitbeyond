@@ -48,17 +48,11 @@ const ExerciseList = () => {
   
   // Fetch muscle groups
   useEffect(() => {
-    const fetchMuscleGroups = async () => {
+  const fetchMuscleGroups = async () => {
       try {
-        console.log("Fetching muscle groups...");
-        const response = await muscleGroupsApi.getAll();
-        console.log("Muscle groups API response:", response);
-        if (response?.data) {
-          console.log("Setting muscle groups:", response.data);
-          setMuscleGroups(response.data);
-        } else {
-          throw new Error("No muscle groups data received");
-        }
+    const response = await muscleGroupsApi.getAll();
+    if (response?.data) setMuscleGroups(response.data);
+    else throw new Error("No muscle groups data received");
       } catch (error) {
         console.error("Failed to fetch muscle groups:", error);
         toast({
@@ -94,7 +88,7 @@ const ExerciseList = () => {
       setLoading(true);
       setError(null);
       try {
-        console.log("Fetching exercises with muscle group filter:", selectedMuscleGroup);
+  // Fetch exercises (cached by exerciseTemplatesApi)
         let response;
         if (selectedMuscleGroup && selectedMuscleGroup !== "all") {
           response = await exerciseTemplatesApi.getByMuscleGroup(selectedMuscleGroup);
@@ -102,32 +96,13 @@ const ExerciseList = () => {
           response = await exerciseTemplatesApi.getAll();
         }
         
-        console.log("Raw exercises API response:", response);
-        
-        if (response?.data) {          // Log raw data first
-          console.log("Raw API response data:", JSON.stringify(response.data, null, 2));
-
-          // Log each exercise with its properties for debugging
-          response.data.forEach((exercise: any, index: number) => {
-            console.log(`Exercise ${index} raw data:`, exercise);
-            console.log(`Exercise ${index} parsed:`, {
-              id: exercise?.id,
-              name: exercise?.name,
-              primaryMuscleGroup: exercise?.primaryMuscleGroup,
-              secondaryMuscleGroup: exercise?.secondaryMuscleGroup,
-              description: exercise?.description
-            });
-          });
-
-          // Don't modify the original data
-          const validExercises = response.data.map(exercise => ({
+        if (response?.data) {
+          const validExercises = response.data.map((exercise: any) => ({
             ...exercise,
             name: exercise.name || 'Unnamed Exercise',
             description: exercise.description || 'No description available',
             muscleGroups: exercise.muscleGroups || []
           }));
-
-          console.log("Processed valid exercises:", validExercises);
           setExercises(validExercises);
           setFilteredExercises(validExercises);
         } else {

@@ -1,4 +1,5 @@
 import axios from 'axios';
+import cache from '@/services/cache';
 
 const API_URL = 'http://localhost:8080/api'; // Adjust the base URL as needed
 
@@ -69,15 +70,19 @@ export const muscleGroupsApi = {
       const token = localStorage.getItem('token');
       const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
       
-      console.log('Making API request for muscle groups...');
-      const response = await axiosInstance.get('/muscle-groups/public', config);
+  const key = 'muscleGroups:all';
+  const cached = cache.get(key);
+  if (cached) return { data: cached } as any;
+  const response = await axiosInstance.get('/muscle-groups/public', config);
       
       if (response.data.length === 0) {
         console.warn('No muscle groups found in API response.');
       }
 
-      console.log('Received muscle groups:', response.data);
-      return response;
+  console.log('Received muscle groups:', response.data);
+  // cache result 10 minutes
+  cache.set(key, response.data, 10 * 60 * 1000);
+  return response;
     } catch (error) {
       console.warn("API call for muscle groups failed, using fallback data", error);
 
@@ -97,14 +102,11 @@ export const muscleGroupsApi = {
     const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
     
     console.log(`Making API request for muscle group with id: ${id}`);
+    const key = `muscleGroups:${id}`;
+    const cached = cache.get(key);
+    if (cached) return { data: cached } as any;
     return axiosInstance.get(`/muscle-groups/public/${id}`, config)
-      .then(response => {
-        console.log(`Received muscle group with id ${id}:`, response.data);
-        return response;
-      })
-      .catch(error => {
-        console.error(`Error fetching muscle group with id ${id}:`, error);
-        throw error;
-      });
+      .then(response => { cache.set(key, response.data, 10 * 60 * 1000); return response; })
+      .catch(error => { console.error(`Error fetching muscle group with id ${id}:`, error); throw error; });
   },
 };

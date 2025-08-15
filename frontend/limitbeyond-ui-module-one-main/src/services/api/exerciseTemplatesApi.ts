@@ -1,41 +1,72 @@
 import { axiosInstance } from './axiosInstance';
+import cache from '@/services/cache';
 
 export const exerciseTemplatesApi = {
   getAll: async () => {
+    const key = 'exercises:all';
+    const cached = cache.get(key);
+    if (cached) return { data: cached } as any;
+    const token = localStorage.getItem('token');
+    // If no token, call public endpoint directly (avoid auth failure roundtrip)
+    if (!token) {
+      const resp = await axiosInstance.get('/exercise-templates/public');
+      cache.set(key, resp.data, 10 * 60 * 1000);
+      return resp;
+    }
     try {
-      // Try authenticated endpoint first
-      return await axiosInstance.get('/exercise-templates');
+      // Authenticated call when token present
+      const resp = await axiosInstance.get('/exercise-templates');
+      cache.set(key, resp.data, 10 * 60 * 1000);
+      return resp;
     } catch (error: any) {
       if (error.response?.status === 403 || error.response?.status === 401) {
         // Fallback to public endpoint if authentication fails
-        console.log('Falling back to public exercise templates endpoint');
-        return await axiosInstance.get('/exercise-templates/public');
+        const resp = await axiosInstance.get('/exercise-templates/public');
+        cache.set(key, resp.data, 10 * 60 * 1000);
+        return resp;
       }
       throw error;
     }
   },
 
   getById: (id: string) => {
-    return axiosInstance.get(`/exercise-templates/${id}`);
+  const key = `exercise:${id}`;
+  const cached = cache.get(key);
+  if (cached) return { data: cached } as any;
+  return axiosInstance.get(`/exercise-templates/${id}`).then(r => { cache.set(key, r.data, 10 * 60 * 1000); return r; });
   },
 
   create: (exerciseTemplate: any) => {
-    return axiosInstance.post('/exercise-templates', exerciseTemplate);
+  const resp = axiosInstance.post('/exercise-templates', exerciseTemplate);
+  // clear exercises cache
+  cache.clear('exercises:');
+  return resp;
   },
 
   update: (id: string, exerciseTemplate: any) => {
-    return axiosInstance.put(`/exercise-templates/${id}`, exerciseTemplate);
+  const resp = axiosInstance.put(`/exercise-templates/${id}`, exerciseTemplate);
+  cache.del(`exercise:${id}`);
+  cache.clear('exercises:');
+  return resp;
   },
 
   delete: (id: string) => {
-    return axiosInstance.delete(`/exercise-templates/${id}`);
+  const resp = axiosInstance.delete(`/exercise-templates/${id}`);
+  cache.del(`exercise:${id}`);
+  cache.clear('exercises:');
+  return resp;
   },
 
   bulkCreate: (exerciseTemplates: any[]) => {
-    return axiosInstance.post('/exercise-templates/bulk', exerciseTemplates);
+  const resp = axiosInstance.post('/exercise-templates/bulk', exerciseTemplates);
+  cache.clear('exercises:');
+  return resp;
   },
 
   getByMuscleGroup: (muscleGroupId: string) => {
-    return axiosInstance.get(`/exercise-templates/by-muscle-group/${muscleGroupId}`);
+  const key = `exercises:mg:${muscleGroupId}`;
+  const cached = cache.get(key);
+  if (cached) return { data: cached } as any;
+  return axiosInstance.get(`/exercise-templates/by-muscle-group/${muscleGroupId}`).then(r => { cache.set(key, r.data, 2 * 60 * 1000); return r; });
   }
 }; 

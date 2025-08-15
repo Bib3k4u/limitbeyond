@@ -1,30 +1,50 @@
 import { axiosInstance } from './axiosInstance';
 import { Workout, WorkoutRequest } from '@/types/workout';
+import cache from '@/services/cache';
 
 export const workoutApi = {
-  getAll: (memberId?: string) => {
+  getAll: async (memberId?: string) => {
+    const key = memberId ? `workouts:member:${memberId}` : `workouts:all`;
+    const cached = cache.get(key);
+    if (cached) return { data: cached } as any;
     // If memberId provided, pass as query param so backend can return that member's workouts
     const config = memberId ? { params: { memberId } } : undefined;
-    return axiosInstance.get<Workout[]>('/workouts', config);
+    const resp = await axiosInstance.get<Workout[]>('/workouts', config);
+    cache.set(key, resp.data, 2 * 60 * 1000); // cache 2 minutes
+    return resp;
   },
 
-  getById: (id: string) => {
-    return axiosInstance.get<Workout>(`/workouts/${id}`);
+  getById: async (id: string) => {
+    const key = `workout:${id}`;
+    const cached = cache.get(key);
+    if (cached) return { data: cached } as any;
+    const resp = await axiosInstance.get<Workout>(`/workouts/${id}`);
+    cache.set(key, resp.data, 2 * 60 * 1000);
+    return resp;
   },
 
-  create: (workout: WorkoutRequest) => {
-    return axiosInstance.post<Workout>('/workouts', workout);
+  create: async (workout: WorkoutRequest) => {
+    const resp = await axiosInstance.post<Workout>('/workouts', workout);
+    // new data -> clear relevant caches
+    cache.clear('workouts:');
+    return resp;
   },
 
-  update: (id: string, workout: WorkoutRequest) => {
-    return axiosInstance.put<Workout>(`/workouts/${id}`, workout);
+  update: async (id: string, workout: WorkoutRequest) => {
+    const resp = await axiosInstance.put<Workout>(`/workouts/${id}`, workout);
+    cache.del(`workout:${id}`);
+    cache.clear('workouts:');
+    return resp;
   },
 
-  delete: (id: string) => {
-    return axiosInstance.delete(`/workouts/${id}`);
+  delete: async (id: string) => {
+    const resp = await axiosInstance.delete(`/workouts/${id}`);
+    cache.del(`workout:${id}`);
+    cache.clear('workouts:');
+    return resp;
   },
 
-  getByDateRange: (startDate: string, endDate: string) => {
+  getByDateRange: async (startDate: string, endDate: string) => {
     // Backend expects ISO date (yyyy-MM-dd) as LocalDate; normalize in case caller passed full ISO timestamps
     const normalize = (d: string) => {
       if (!d) return d;
@@ -35,12 +55,31 @@ export const workoutApi = {
     };
     const s = normalize(startDate);
     const e = normalize(endDate);
-    return axiosInstance.get<Workout[]>(`/workouts/by-date-range?startDate=${s}&endDate=${e}`);
+    const key = `workouts:daterange:${s}:${e}`;
+    const cached = cache.get(key);
+    if (cached) return { data: cached } as any;
+    const resp = await axiosInstance.get<Workout[]>(`/workouts/by-date-range?startDate=${s}&endDate=${e}`);
+    cache.set(key, resp.data, 2 * 60 * 1000);
+    return resp;
   },
 
-  getByMuscleGroup: (muscleGroupId: string) => {
-    return axiosInstance.get<Workout[]>(`/workouts/by-muscle-group/${muscleGroupId}`);
+  getByMuscleGroup: async (muscleGroupId: string) => {
+    const key = `workouts:mg:${muscleGroupId}`;
+    const cached = cache.get(key);
+    if (cached) return { data: cached } as any;
+    const resp = await axiosInstance.get<Workout[]>(`/workouts/by-muscle-group/${muscleGroupId}`);
+    cache.set(key, resp.data, 2 * 60 * 1000);
+    return resp;
   },
+
+  // Allow manual cache invalidation from other parts of the app
+  clearCache: () => {
+    cache.clear('workouts:');
+    // also clear individual workout entries
+    // Note: cache.clear with prefix will already clear keys starting with workouts:
+  }
+
+,
 
   completeSet: (workoutId: string, setId: string) => {
     return axiosInstance.post(`/workouts/${workoutId}/sets/${setId}/complete`);
