@@ -118,6 +118,14 @@ public class UserController {
         return ResponseEntity.ok("User deactivated successfully");
     }
 
+    @GetMapping("/{userId}")
+    @PreAuthorize("hasAnyRole('ADMIN','TRAINER','MEMBER')")
+    public ResponseEntity<User> getUserById(@PathVariable String userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        return ResponseEntity.ok(user);
+    }
+
     @PutMapping("/member/{memberId}/assign-trainer")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> assignTrainerToMember(

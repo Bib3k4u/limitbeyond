@@ -6,6 +6,7 @@ import { UserProfile } from '@/services/api/userService';
 import userService from '@/services/api/userService';
 import { workoutApi } from '@/services/api/workoutApi';
 import { format, subDays } from 'date-fns';
+import { checkinApi } from '@/services/api/checkinApi';
 import { WorkoutStatsChart } from './WorkoutStatsChart';
 
 interface DashboardOverviewProps {
@@ -22,6 +23,7 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ userProfile }) =>
   const [progressPercent, setProgressPercent] = useState<number | null>(null);
   const [lastWorkout, setLastWorkout] = useState<any | null>(null);
   const [lastWorkoutVolume, setLastWorkoutVolume] = useState<number | null>(null);
+  const [daysActive30, setDaysActive30] = useState<number | null>(null);
   
   useEffect(() => {
     if (userProfile && userProfile.roles && userProfile.roles.length > 0) {
@@ -184,6 +186,19 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ userProfile }) =>
               setLastWorkout(null);
               setLastWorkoutVolume(null);
             }
+            // compute days active in last 30 days using checkins
+            try {
+              const end = format(new Date(), 'yyyy-MM-dd');
+              const start = format(subDays(new Date(), 29), 'yyyy-MM-dd');
+              const resp = await checkinApi.between(start, end);
+              const all = resp.data || [];
+              const mine = all.filter((c:any) => c.userId === userProfile.id);
+              const days = new Set<string>();
+              mine.forEach((c:any)=>{ days.add(new Date(c.occurredAt).toISOString().split('T')[0]); });
+              setDaysActive30(days.size);
+            } catch (e) {
+              setDaysActive30(null);
+            }
           } catch (e) {
             console.error('Error fetching member workouts for dashboard', e);
           }
@@ -234,12 +249,12 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ userProfile }) =>
       gradientTo: 'to-yellow-500/5',
     },
     {
-      title: 'Total Volume (30d)',
-      value: totalVolume !== null ? String(totalVolume) : '—',
+      title: 'Revenue (30d)',
+      value: '—',
       icon: TrendingUp,
       trend: progressPercent !== null ? `${progressPercent > 0 ? '+' : ''}${progressPercent}%` : '—',
       trendUp: (progressPercent || 0) >= 0,
-      description: 'Kg x reps for last 30 days',
+      description: 'Revenue for last 30 days',
       color: 'text-purple-400',
       gradientFrom: 'from-purple-500/20',
       gradientTo: 'to-purple-500/5',
@@ -329,7 +344,7 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ userProfile }) =>
     },
     {
       title: 'Consistency',
-      value: '—',
+  value: daysActive30 !== null ? String(daysActive30) : '—',
       icon: Bell,
       trend: '—',
       trendUp: true,

@@ -57,6 +57,12 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ userProfile }) => {
       isActive: isActive('/dashboard/workouts'),
     },
     {
+      title: 'Checkin',
+      icon: Bell,
+      path: '/dashboard/checkin',
+      isActive: isActive('/dashboard/checkin'),
+    },
+    {
       title: 'Account',
       icon: User,
       path: '/dashboard/account',
@@ -69,6 +75,11 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ userProfile }) => {
       isActive: isActive('/dashboard/help'),
     },
   ];
+
+  // Quick checkin button visible to members and trainers
+  const quickCheckin = () => {
+    navigate('/dashboard/checkin');
+  };
 
   // Admin specific menu items
   const adminItems = [
@@ -89,6 +100,18 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ userProfile }) => {
       icon: Calendar,
       path: '/dashboard/assignments',
       isActive: isActive('/dashboard/assignments'),
+    },
+    {
+      title: 'Payments',
+      icon: ClipboardList,
+      path: '/dashboard/payments',
+      isActive: isActive('/dashboard/payments'),
+    },
+    {
+      title: 'Checkins',
+      icon: Bell,
+      path: '/dashboard/checkins',
+      isActive: isActive('/dashboard/checkins'),
     },
   ];
 

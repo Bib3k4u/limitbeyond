@@ -24,6 +24,9 @@ import DietChats from '@/pages/dashboard/DietChats';
 import AccountSettings from '@/pages/dashboard/AccountSettings';
 import HelpCenter from '@/pages/dashboard/HelpCenter';
 import AdminProfile from '@/pages/dashboard/admin/AdminProfile';
+import AdminPayments from '@/pages/admin/AdminPayments';
+import CheckinPage from '@/pages/checkin/CheckinPage';
+import AdminCheckins from '@/pages/admin/AdminCheckins';
 
 const Dashboard = () => {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
@@ -133,8 +136,15 @@ const Dashboard = () => {
                     <Route path="users" element={<UserManagement />} />
                     <Route path="assignments" element={<AssignmentManagement />} />
                     <Route path="profile" element={<AdminProfile />} />
+                    <Route path="payments" element={<AdminPayments />} />
+                    <Route path="checkins" element={<AdminCheckins />} />
+                    <Route path="checkin" element={<CheckinPage />} />
                   </>
                 )}
+
+                {/* Public checkin route for members/trainers */}
+                <Route path="checkin/:userId" element={<CheckinPage />} />
+                <Route path="checkin" element={<CheckinPage />} />
                 
                 {userProfile?.roles.includes('TRAINER') && (
                   <Route path="members" element={<MemberManagement />} />
