@@ -187,8 +187,8 @@ const WorkoutTemplates = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-2">
+    <div className="space-y-3">
+      <div className="flex flex-col items-start md:items-center lg:items-center xl:items-center md:flex-row lg:flex-row xl:flex-row gap-2">
         <Button
           variant="outline"
           size="sm"
@@ -197,7 +197,7 @@ const WorkoutTemplates = () => {
           <ChevronLeft className="h-4 w-4" />
         </Button>
         <div>
-          <h1 className="text-2xl font-bold">Workout Templates</h1>
+          <h1 className="text-md md:text-lg  lg:text-lg xl:text-lg font-bold">Workout Templates</h1>
           <p className="text-muted-foreground">Use prebuilt workout plans to get started quickly</p>
         </div>
       </div>

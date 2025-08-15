@@ -257,19 +257,19 @@ const WorkoutDetail = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <div className="flex items-start flex-col gap-y-2 justify-between">
+        <div className="flex items-center flex- gap-4">
           <Button variant="outline" size="sm" onClick={() => navigate('/dashboard/workouts')}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
+            <ArrowLeft className="h-4 w-4 " />
+            
           </Button>
         <div>
-            <h1 className="text-2xl font-bold">{workout.name}</h1>
-            <p className="text-muted-foreground">{workout.description}</p>
+            <h1 className="text-xl font-bold">{workout.name}</h1>
           </div>
         </div>
+            <p className="text-muted-foreground">{workout.description}</p>
         
-        <div className="flex items-center gap-2">
+        <div className="flex w-full justify-end items-center gap-2">
           <Button variant="outline" onClick={() => setShowCopyDialog(true)}>
             <Copy className="h-4 w-4 mr-2" />
             Copy
@@ -291,7 +291,7 @@ const WorkoutDetail = () => {
 
       {/* Workout Info */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="bg-lb-card border-white/10">
+        {/* <Card className="bg-lb-card border-white/10">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-gray-400 flex items-center gap-2">
               <Calendar className="h-4 w-4" />
@@ -303,9 +303,9 @@ const WorkoutDetail = () => {
               {workout.scheduledDate ? format(new Date(workout.scheduledDate), 'MMM dd, yyyy') : 'Not scheduled'}
             </p>
           </CardContent>
-        </Card>
+        </Card> */}
 
-        <Card className="bg-lb-card border-white/10">
+        {/* <Card className="bg-lb-card border-white/10">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-gray-400 flex items-center gap-2">
               <User className="h-4 w-4" />
@@ -317,7 +317,7 @@ const WorkoutDetail = () => {
               {workout.member ? `${workout.member.firstName} ${workout.member.lastName}` : 'Not assigned'}
             </p>
           </CardContent>
-        </Card>
+        </Card> */}
 
         <Card className="bg-lb-card border-white/10">
           <CardHeader className="pb-2">
@@ -369,7 +369,7 @@ const WorkoutDetail = () => {
           <Card key={exerciseIndex} className="overflow-hidden bg-lb-card border-white/10">
             <CardHeader className="pb-3">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div className="flex-1">
+                <div className="flex flex-col w-full md:gap-2 lg:gap-2 xl:gap-2 items-start md:items-center lg:items-center xl:items-center md:flex-row lg:flex-row xl:flex-row">
                   <CardTitle className="text-lg text-white">{exercise.exerciseName}</CardTitle>
                   {exercise.exerciseDescription && (
                     <p className="text-sm text-gray-400 mt-1">
@@ -377,9 +377,9 @@ const WorkoutDetail = () => {
                     </p>
                   )}
                 </div>
-                <div className="text-right">
+                <div className="text-right flex justify-end w-full items-center gap-2">
                   <div className="text-sm text-gray-400">Total Volume</div>
-                  <div className="text-lg font-semibold text-lb-accent">
+                  <div className="text-sm font-semibold text-lb-accent">
                     {exercise.totalVolume} kg
                   </div>
                 </div>
@@ -411,31 +411,34 @@ const WorkoutDetail = () => {
                         : 'bg-lb-darker border-white/10'
                     }`}
                   >
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 flex-1">
-                      <span className="text-sm font-medium text-gray-300 min-w-[60px]">
-                        Set {setIndex + 1}
-                      </span>
-                      
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
-                        <span className="text-sm text-white">{set.reps} reps</span>
-                        {set.weight > 0 && (
-                          <>
-                            <span className="text-gray-500">@</span>
-                            <span className="text-sm font-medium text-white">{set.weight} kg</span>
-                          </>
-                        )}
-                      </div>
-                      
-                      {set.volume > 0 && (
-                        <Badge variant="outline" className="text-xs border-lb-accent/30 text-lb-accent">
-                          Volume: {set.volume}
-                        </Badge>
-                      )}
-                      
-                      {set.notes && (
-                        <span className="text-sm text-gray-400 italic">"{set.notes}"</span>
-                      )}
-                    </div>
+                   <div className="flex flex-row items-center gap-2 flex-wrap">
+  <span className="text-xs font-medium text-gray-400 min-w-[40px]">
+    {setIndex + 1}
+  </span>
+
+  <div className="flex flex-row items-center gap-1">
+    <span className="text-xs text-white">{set.reps} reps</span>
+    {set.weight > 0 && (
+      <>
+        <span className="text-gray-500 text-xs">@</span>
+        <span className="text-xs font-medium text-white">{set.weight} kg</span>
+      </>
+    )}
+  </div>
+
+  {set.volume > 0 && (
+    <span className="text-xs text-lb-accent">
+      {set.volume}
+    </span>
+  )}
+
+  {set.notes && (
+    <span className="text-xs text-gray-400 italic truncate max-w-[120px]">
+      "{set.notes}"
+    </span>
+  )}
+</div>
+
                     
                     <div className="flex items-center gap-2 w-full sm:w-auto">
                 {set.completed ? (

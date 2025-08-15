@@ -166,7 +166,7 @@ export function WorkoutStatsChart() {
 
   return (
     <Card className="p-6">
-      <div className="flex items-center space-x-4 mb-4">
+      <div className="flex  items-between justify-between md:justify-end lg:justify-end xl:justify-end space-x-4 mb-4">
         <div>
           <label className="text-sm font-medium">Muscle Group</label>
           <select
@@ -197,16 +197,16 @@ export function WorkoutStatsChart() {
         </div>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="text-center">
-          <h3 className="text-lg font-semibold">{stats.totalWorkouts}</h3>
+        <div className="text-center flex items-center gap-3">
+          <h3 className="text-sm font-semibold">{stats.totalWorkouts}</h3>
           <p className="text-sm text-muted-foreground">Total Workouts</p>
         </div>
-        <div className="text-center">
-          <h3 className="text-lg font-semibold">{stats.completedWorkouts}</h3>
+        <div className="text-center flex items-center gap-3">
+          <h3 className="text-sm font-semibold">{stats.completedWorkouts}</h3>
           <p className="text-sm text-muted-foreground">Completed Workouts</p>
         </div>
-        <div className="text-center">
-          <h3 className="text-lg font-semibold">{Math.round(stats.totalVolume).toLocaleString()} kg</h3>
+        <div className="text-center flex items-center gap-3">
+          <h3 className="text-sm font-semibold">{Math.round(stats.totalVolume).toLocaleString()} kg</h3>
           <p className="text-sm text-muted-foreground">Total Volume</p>
         </div>
       </div>

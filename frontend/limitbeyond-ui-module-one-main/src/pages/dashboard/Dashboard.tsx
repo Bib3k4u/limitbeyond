@@ -173,12 +173,15 @@ const DashboardHome = ({ userProfile }: { userProfile: UserProfile | null }) => 
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Welcome, {userProfile?.firstName}!</h1>
-          <p className="text-muted-foreground">Here's what's happening with your account today.</p>
+          <h1 className="text-2xl font-bold tracking-tight">Welcome, {userProfile?.firstName}!</h1>
         </div>
         <div className="bg-lb-card rounded-full px-4 py-1 text-sm text-lb-accent-secondary border border-lb-accent/20">
           {userProfile?.roles?.[0] || 'Member'}
         </div>
+      </div>
+      <div>
+          <p className="text-muted-foreground">Here's what's happening with your account today.</p>
+
       </div>
 
       <DashboardOverview userProfile={userProfile} />

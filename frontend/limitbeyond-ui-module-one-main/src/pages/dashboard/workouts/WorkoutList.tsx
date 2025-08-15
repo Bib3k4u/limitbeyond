@@ -304,10 +304,9 @@ export const WorkoutList = () => {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">My Workouts</h1>
-        <div className="flex gap-2">
+    <div className="space-y-3">
+      <div className="flex flex-col justify-between items-start">
+        <div className="flex w-full justify-end gap-2 mb-2">
           <Link to="/dashboard/workouts/templates">
             <Button variant="outline">
               <Copy className="h-4 w-4 mr-2" />
@@ -321,6 +320,8 @@ export const WorkoutList = () => {
             </Button>
           </Link>
         </div>
+                <h1 className="text-md md:text-lg lg:text-lg xl:text-lg font-bold">My Workouts</h1>
+
       </div>
 
       {/* Volume Progress Graph Card */}

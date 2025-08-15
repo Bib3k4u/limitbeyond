@@ -1,6 +1,8 @@
 import axios from 'axios';
 
 const API_URL = 'http://localhost:8080/api/diet-chat';
+// const API_URL = 'https://gym-management-dz1y.onrender.com/api/diet-chat';
+
 
 // Create an axios instance
 const axiosInstance = axios.create({

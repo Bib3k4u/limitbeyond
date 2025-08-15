@@ -1,6 +1,8 @@
 import axios from 'axios';
 
 const API_URL = 'http://localhost:8080/api';
+// const API_URL = 'https://gym-management-dz1y.onrender.com/api';
+
 
 // Create an axios instance with common configuration
 export const axiosInstance = axios.create({

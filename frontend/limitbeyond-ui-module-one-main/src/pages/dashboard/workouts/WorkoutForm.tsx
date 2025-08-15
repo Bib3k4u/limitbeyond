@@ -386,7 +386,7 @@ const WorkoutForm = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">{id ? 'Edit Workout' : 'Create New Workout'}</h1>
+        <h1 className="text-lg font-bold">{id ? 'Edit Workout' : 'Create New Workout'}</h1>
         <Button variant="outline" onClick={() => navigate('/dashboard/workouts')}>
           Cancel
         </Button>
@@ -522,7 +522,7 @@ const WorkoutForm = () => {
               <Card key={exercise.exerciseId} className="p-4 bg-lb-card border-white/10">
                 <div className="flex justify-between items-start mb-4">
                   <div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-col md:flex-row lg:flex-row xl:flex-row md:items-center lg:items-center xl:items-center gap-3">
                       <h3 className="font-semibold text-lg text-white">{exercise.exerciseName}</h3>
                       {/* Previous volume tag */}
                       <Badge variant="secondary" className="text-sm bg-white/5 text-gray-200">
@@ -533,7 +533,7 @@ const WorkoutForm = () => {
                         Current: {Number(computeCurrentVolume(exercise)).toFixed(0)} kg
                       </Badge>
                     </div>
-                    <p className="text-sm text-gray-400">
+                    <p className="text-sm mt-2 text-center text-gray-400">
                       {exercises.find(e => e.id === exercise.exerciseId)?.description || 'No description available'}
                     </p>
                   </div>
@@ -550,58 +550,63 @@ const WorkoutForm = () => {
 
                 <div className="space-y-3">
                   {exercise.sets.map((set, setIndex) => (
-                    <div key={set.id} className="flex flex-col sm:flex-row items-start sm:items-center gap-3 p-3 bg-lb-darker border border-white/10 rounded-lg">
-                      <div className="flex-1 min-w-0">
-                        <span className="text-sm font-medium text-white">Set {setIndex + 1}</span>
-                      </div>
-                      
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full sm:w-auto">
-                        <div className="flex items-center gap-2 w-full sm:w-auto">
-                            <Input
-                              type="number"
-                            placeholder="Reps"
-                            value={set.reps}
-                            onChange={(e) => updateSet(exerciseIndex, setIndex, 'reps', parseInt(e.target.value) || 0)}
-                            className="w-20 bg-lb-dark border-white/20 text-white"
-                            min="1"
-                          />
-                          <span className="text-sm text-gray-400">reps</span>
-                        </div>
+                    <div
+  key={set.id}
+  className="flex flex-col sm:flex-row items-start sm:items-center gap-2 p-2 bg-lb-darker border border-white/10 rounded-lg"
+>
+  <div className="flex items-center gap-2 min-w-0">
+    <span className="text-xs font-medium text-white whitespace-nowrap">
+      Set {setIndex + 1}
+    </span>
+  </div>
 
-                        <div className="flex items-center gap-2 w-full sm:w-auto">
-                            <Input
-                              type="number"
-                            placeholder="Weight"
-                            value={set.weight}
-                            onChange={(e) => updateSet(exerciseIndex, setIndex, 'weight', parseFloat(e.target.value) || 0)}
-                            className="w-20 bg-lb-dark border-white/20 text-white"
-                            min="0"
-                              step="0.5"
-                          />
-                          <span className="text-sm text-gray-400">kg</span>
-                        </div>
-                      </div>
+  <div className="flex items-center gap-2 w-full flex-wrap">
+    <div className="flex items-center gap-1">
+      <Input
+        type="number"
+        placeholder="Reps"
+        value={set.reps}
+        onChange={(e) => updateSet(exerciseIndex, setIndex, 'reps', parseInt(e.target.value) || 0)}
+        className="w-16 bg-lb-dark border-white/20 text-white text-xs"
+        min="1"
+      />
+      <span className="text-xs text-gray-400">reps</span>
+    </div>
 
-                      <Input
-                        placeholder="Notes"
-                        value={set.notes}
-                        onChange={(e) => updateSet(exerciseIndex, setIndex, 'notes', e.target.value)}
-                        className="flex-1 bg-lb-dark border-white/20 text-white placeholder:text-gray-500"
-                      />
+    <div className="flex items-center gap-1">
+      <Input
+        type="number"
+        placeholder="Weight"
+        value={set.weight}
+        onChange={(e) => updateSet(exerciseIndex, setIndex, 'weight', parseFloat(e.target.value) || 0)}
+        className="w-16 bg-lb-dark border-white/20 text-white text-xs"
+        min="0"
+        step="0.5"
+      />
+      <span className="text-xs text-gray-400">kg</span>
+    </div>
 
-                      {exercise.sets.length > 1 && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => removeSetFromExercise(exerciseIndex, setIndex)}
-                          className="border-red-500/50 text-red-400 hover:bg-red-500/20 w-full sm:w-auto"
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Remove
-                        </Button>
-                      )}
-                  </div>
+    <Input
+      placeholder="Notes"
+      value={set.notes}
+      onChange={(e) => updateSet(exerciseIndex, setIndex, 'notes', e.target.value)}
+      className="flex-1 min-w-[100px] bg-lb-dark border-white/20 text-white placeholder:text-gray-500 text-xs"
+    />
+  </div>
+
+  {exercise.sets.length > 1 && (
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      onClick={() => removeSetFromExercise(exerciseIndex, setIndex)}
+      className="border-red-500/50 text-red-400 hover:bg-red-500/20 text-xs p-1 h-auto"
+    >
+      <Trash2 className="h-3.5 w-3.5" />
+    </Button>
+  )}
+</div>
+
                   ))}
 
                     <Button
