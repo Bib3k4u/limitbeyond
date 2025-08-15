@@ -25,7 +25,17 @@ export const workoutApi = {
   },
 
   getByDateRange: (startDate: string, endDate: string) => {
-    return axiosInstance.get<Workout[]>(`/workouts/by-date-range?startDate=${startDate}&endDate=${endDate}`);
+    // Backend expects ISO date (yyyy-MM-dd) as LocalDate; normalize in case caller passed full ISO timestamps
+    const normalize = (d: string) => {
+      if (!d) return d;
+      // If contains 'T' (full ISO), take date part before 'T'
+      if (d.includes('T')) return d.split('T')[0];
+      // If already in yyyy-MM-dd, return as-is
+      return d;
+    };
+    const s = normalize(startDate);
+    const e = normalize(endDate);
+    return axiosInstance.get<Workout[]>(`/workouts/by-date-range?startDate=${s}&endDate=${e}`);
   },
 
   getByMuscleGroup: (muscleGroupId: string) => {

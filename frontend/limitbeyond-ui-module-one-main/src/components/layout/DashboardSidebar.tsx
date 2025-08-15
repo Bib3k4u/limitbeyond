@@ -142,6 +142,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ userProfile }) => {
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     variant={item.isActive ? "default" : "outline"}
+                    className={item.isActive ? "bg-lb-accent/10 hover:bg-lb-accent/20" : ""}
                     onClick={() => navigate(item.path)}
                   >
                     <item.icon className="h-5 w-5 mr-3" />
@@ -162,6 +163,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ userProfile }) => {
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton
                       variant={item.isActive ? "default" : "outline"}
+                      className={item.isActive ? "bg-lb-accent/10 hover:bg-lb-accent/20" : ""}
                       onClick={() => navigate(item.path)}
                     >
                       <item.icon className="h-5 w-5 mr-3" />
@@ -183,6 +185,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ userProfile }) => {
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton
                       variant={item.isActive ? "default" : "outline"}
+                      className={item.isActive ? "bg-lb-accent/10 hover:bg-lb-accent/20" : ""}
                       onClick={() => navigate(item.path)}
                     >
                       <item.icon className="h-5 w-5 mr-3" />
@@ -203,6 +206,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ userProfile }) => {
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     variant={item.isActive ? "default" : "outline"}
+                    className={item.isActive ? "bg-lb-accent/10 hover:bg-lb-accent/20" : ""}
                     onClick={() => navigate(item.path)}
                   >
                     <item.icon className="h-5 w-5 mr-3" />
@@ -220,7 +224,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ userProfile }) => {
               <SidebarMenuItem>
                 <Button
                   variant="ghost"
-                  className="w-full justify-start"
+                  className="w-full justify-start hover:bg-lb-accent/10"
                   onClick={handleLogout}
                 >
                   <LogOut className="h-5 w-5 mr-3" />
